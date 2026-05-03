@@ -16,5 +16,6 @@ class VerifyCsrfToken extends BaseVerifier
     protected $except = [
         'payments/*/webhook',
         'gpsdata_insert',
+        'jimi/webhook',
     ];
 }

@@ -110,6 +110,10 @@ class DeviceService
             $data['max_speed'] = null;
         }
 
+        if (array_key_exists('jimi_type', $data) && empty($data['jimi_type'])) {
+            $data['jimi_type'] = null;
+        }
+
         if (array_key_exists('fuel_quantity', $data)) {
             $data['fuel_quantity'] = floatval($data['fuel_quantity']);
         }

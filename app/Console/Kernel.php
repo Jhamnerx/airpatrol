@@ -1,9 +1,12 @@
-<?php namespace App\Console;
+<?php
+
+namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
-class Kernel extends ConsoleKernel {
+class Kernel extends ConsoleKernel
+{
 
     /**
      * The Artisan commands provided by your application.
@@ -68,6 +71,8 @@ class Kernel extends ConsoleKernel {
         'App\Console\Commands\BackupImportCommand',
         'App\Console\Commands\DeleteInvalidFuelEventsCommand',
         'App\Console\Commands\DeviceServerReconfigCommand',
+        'App\Console\Commands\SyncJimiPositions',
+        'App\Console\Commands\JimiDebug',
     ];
 
     /**
@@ -100,6 +105,11 @@ class Kernel extends ConsoleKernel {
             ->everyMinute();
 
         $schedule
+            ->command('jimi:sync-positions')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule
             ->command('subscriptions:check')
             ->hourly();
 
@@ -118,7 +128,7 @@ class Kernel extends ConsoleKernel {
         $schedule
             ->command('server:check')
             ->daily();
-            
+
         $schedule
             ->command('sharing:clean')
             ->everyMinute();

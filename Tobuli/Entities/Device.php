@@ -93,6 +93,10 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
 
     const STOP_DURATION_OFFSET = 10;
 
+    /** Tipos de integración Jimi IoT */
+    const JIMI_TYPE_GPS   = 'gps';   // GPS básico gestionado por Jimi
+    const JIMI_TYPE_VIDEO = 'video'; // GPS con cámara / video embebido
+
     public static array $displayField = ['imei', 'name'];
 
     protected $table = 'devices';
@@ -144,7 +148,8 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
         'app_tracker_login',
         'fuel_detect_sec_after_stop',
         'lbs',
-        'authentication'
+        'authentication',
+        'jimi_type',
     );
 
     protected $appends = [
@@ -2117,6 +2122,10 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
     {
         return $this->kind === self::KIND_GENERAL;
     }
+    public function isJimiVideo(): bool
+    {
+        return $this->kind === self::JIMI_TYPE_VIDEO;
+    }
 
     public function isBeacon(): bool
     {
@@ -2164,5 +2173,33 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
             ,
             $alias
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Scopes Jimi IoT
+    // -------------------------------------------------------------------------
+
+    /** Dispositivos gestionados por Jimi (cualquier tipo: gps o video). */
+    public function scopeJimi($query)
+    {
+        return $query->whereNotNull('jimi_type');
+    }
+
+    /** Dispositivos Jimi con capacidad de video / cámara embebida. */
+    public function scopeJimiVideo($query)
+    {
+        return $query->where('jimi_type', self::JIMI_TYPE_VIDEO);
+    }
+
+    /** ¿Este dispositivo está integrado con Jimi? */
+    public function isJimi(): bool
+    {
+        return !is_null($this->jimi_type);
+    }
+
+    /** ¿Este dispositivo tiene capacidades de video Jimi? */
+    public function hasJimiVideo(): bool
+    {
+        return $this->jimi_type === self::JIMI_TYPE_VIDEO;
     }
 }

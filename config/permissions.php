@@ -218,6 +218,11 @@ return [
             'edit' => 1,
             'remove' => 0,
         ],
+        'device.jimi_type' => [
+            'view' => 1,
+            'edit' => 1,
+            'remove' => 0,
+        ],
         'device.model_id' => [
             'view' => 1,
             'edit' => 1,
@@ -336,6 +341,11 @@ return [
                 'view' => 1,
                 'edit' => 0,
                 'remove' => 0
+            ],
+            'device.jimi_type' => [
+                'view' => 0,
+                'edit' => 0,
+                'remove' => 0,
             ],
             'users' => [
                 'view' => 0,

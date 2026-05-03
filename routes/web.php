@@ -69,6 +69,7 @@ Route::group([], function () {
     # Exceptions to CSRF verification - \App\Http\Middleware\VerifyCsrfToken
     Route::any('payments/{gateway}/webhook', ['as' => 'payments.webhook', 'uses' => 'Frontend\PaymentsController@webhook']);
     Route::any('gpsdata_insert', ['as' => 'gpsdata_insert', 'uses' => 'Frontend\GpsDataController@insert']);
+    Route::post('jimi/webhook', ['as' => 'jimi.webhook', 'uses' => 'Frontend\JimiWebhookController@receive']);
     #####
 
     Route::get('demo', ['as' => 'demo', 'uses' => 'Frontend\LoginController@demo']);
@@ -375,6 +376,14 @@ Route::group(['middleware' => ['auth', 'active_subscription'], 'namespace' => 'F
 
     #Camera
     Route::get('device_media/create', ['as' => 'device_media.create', 'uses' => 'DeviceMediaController@create']);
+
+    # Jimi IoT
+    Route::get('jimi/devices/{id}/live', ['as' => 'jimi.live_stream', 'uses' => 'JimiStreamController@liveStream']);
+    Route::get('jimi/devices/{id}/history', ['as' => 'jimi.history_stream', 'uses' => 'JimiStreamController@historyStream']);
+    Route::post('jimi/devices/{id}/history/cmd', ['as' => 'jimi.history_list_cmd', 'uses' => 'JimiStreamController@historyListCmd']);
+    Route::post('jimi/devices/{id}/history/list', ['as' => 'jimi.history_list', 'uses' => 'JimiStreamController@historyList']);
+    Route::post('jimi/devices/{id}/history/stream-url', ['as' => 'jimi.history_stream_url', 'uses' => 'JimiStreamController@historyStreamUrl']);
+    Route::post('jimi/devices/{id}/history/close', ['as' => 'jimi.history_close', 'uses' => 'JimiStreamController@closeHistoryStream']);
     Route::get('device_media/images/{device_id?}', ['as' => 'device_media.get_images', 'uses' => 'DeviceMediaController@getImages']);
     Route::get('device_media/images_table/{device_id?}', ['as' => 'device_media.get_images_table', 'uses' => 'DeviceMediaController@getImagesTable']);
     Route::get('device_media/image/{device_id?}/{filename?}', ['as' => 'device_media.get_image', 'uses' => 'DeviceMediaController@getImage']);

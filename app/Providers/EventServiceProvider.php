@@ -89,5 +89,8 @@ class EventServiceProvider extends ServiceProvider
         DeviceDeleted::class => [
             BackupRemoveDevice::class
         ],
+        \App\Events\JimiAlarmReceived::class => [
+            \App\Listeners\JimiAlarmListener::class,
+        ],
     ];
 }

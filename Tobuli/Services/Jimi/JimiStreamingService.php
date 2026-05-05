@@ -36,7 +36,7 @@ class JimiStreamingService
      */
     public function getLiveStreamUrl(string $imei): array
     {
-        Log::info('[JimiStreamingService] Obteniendo URL de streaming en vivo para IMEI: ' . $imei . ' Acceso token: ' . $this->auth->getAccessToken());
+        //Log::info('[JimiStreamingService] Obteniendo URL de streaming en vivo para IMEI: ' . $imei . ' Acceso token: ' . $this->auth->getAccessToken());
         return $this->client->send('jimi.device.live.page.url', [
             'access_token' => $this->auth->getAccessToken(),
             'imei'         => $imei,
@@ -64,12 +64,12 @@ class JimiStreamingService
         string $instructionId,
         string $appId
     ): void {
-        Log::info('[JimiStreamingService] Enviando cmd lista histórica', [
-            'imei'          => $imei,
-            'channel'       => $channel,
-            'date'          => $date,
-            'instructionId' => $instructionId,
-        ]);
+        // Log::info('[JimiStreamingService] Enviando cmd lista histórica', [
+        //     'imei'          => $imei,
+        //     'channel'       => $channel,
+        //     'date'          => $date,
+        //     'instructionId' => $instructionId,
+        // ]);
 
         $this->client->send('jimi.device.media.history.list.cmd', [
             'access_token'  => $this->auth->getAccessToken(),
@@ -132,14 +132,14 @@ class JimiStreamingService
             $appId = $this->generateAppId();
         }
 
-        Log::info('[JimiStreamingService] Solicitando stream histórico', [
-            'imei'         => $imei,
-            'channel'      => $channel,
-            'beginTime'    => $beginTime,
-            'endTime'      => $endTime,
-            'fileNameList' => $fileNameList,
-            'appId'        => $appId,
-        ]);
+        // Log::info('[JimiStreamingService] Solicitando stream histórico', [
+        //     'imei'         => $imei,
+        //     'channel'      => $channel,
+        //     'beginTime'    => $beginTime,
+        //     'endTime'      => $endTime,
+        //     'fileNameList' => $fileNameList,
+        //     'appId'        => $appId,
+        // ]);
 
         $result = $this->client->sendRaw('jimi.device.media.history.stream', [
             'access_token' => $this->auth->getAccessToken(),
@@ -154,7 +154,7 @@ class JimiStreamingService
 
         $url = is_string($result) ? $result : ($result['url'] ?? $result['UrlCamera'] ?? '');
 
-        Log::info('[JimiStreamingService] URL histórico obtenida', ['url' => $url]);
+       // Log::info('[JimiStreamingService] URL histórico obtenida', ['url' => $url]);
 
         return $url;
     }
@@ -181,11 +181,11 @@ class JimiStreamingService
                 'appId'        => $appId,
             ]);
         } catch (\Throwable $e) {
-            Log::warning('[JimiStreamingService] Error cerrando stream', [
-                'imei'  => $imei,
-                'appId' => $appId,
-                'error' => $e->getMessage(),
-            ]);
+            // Log::warning('[JimiStreamingService] Error cerrando stream', [
+            //     'imei'  => $imei,
+            //     'appId' => $appId,
+            //     'error' => $e->getMessage(),
+            // ]);
         }
     }
 

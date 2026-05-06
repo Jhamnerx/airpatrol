@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Tobuli\Entities\ApnConfig;
 use Tobuli\Entities\Device;
@@ -676,8 +675,6 @@ class DeviceModalHelper extends ModalHelper
             'status' => $users->isEmpty() ? 'APROBADO' : 'RECHAZADO_POR_LIMITE',
             'usuarios_problematicos' => $users->pluck('email')->toArray()
         ];
-
-        Log::info("DEVICE_LIMIT_VERIFICATION", $logData);
 
         if (!$users->isEmpty()) {
             throw new ValidationException(['user_id' => trans('validation.attributes.devices_limit') . ': ' . $users->implode('email', ', ')]);

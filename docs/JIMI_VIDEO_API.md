@@ -84,6 +84,61 @@ GET /jimi/devices/42/live?user_api_hash=abc123def456
 
 ---
 
+### 1.1 Video en Vivo por Canal (stream directo)
+
+#### `POST /jimi/devices/{id}/live/stream`
+
+Obtiene la URL de streaming en vivo de un canal específico de un dispositivo Jimi compatible (JC450, JC451, JC371, JC181, JC182, JC261, JC400, etc).
+
+**Path params**
+
+| Param | Tipo    | Descripción        |
+| ----- | ------- | ------------------ |
+| `id`  | integer | ID del dispositivo |
+
+**Body (JSON o form-data)**
+
+| Campo     | Tipo    | Requerido | Descripción                                                             |
+| --------- | ------- | --------- | ----------------------------------------------------------------------- |
+| `channel` | integer | Sí        | Canal de cámara. JT808: desde `1`. Concox: desde `0`                    |
+| `app_id`  | string  | No        | ID de sesión opcional (15 chars). Si no se envía, el backend lo genera. |
+
+**Ejemplo de solicitud**
+
+```http
+POST /jimi/devices/42/live/stream?user_api_hash=abc123def456
+Content-Type: application/json
+
+{
+  "channel": 2
+}
+```
+
+**Respuesta 200 — OK**
+
+```json
+{
+  "url": "ws://113.108.62.203:11014/1/865478070000239.live.flv?secret=...",
+  "app_id": "aB3xK9pLmQr7t"
+}
+```
+
+- `url`: URL de streaming directo (WebSocket o HTTP FLV/HLS, según modelo/canal).
+- `app_id`: ID de sesión usado para abrir/cerrar el stream.
+
+**Errores posibles**
+
+| Código | Descripción                                                                |
+| ------ | -------------------------------------------------------------------------- |
+| 401    | `user_api_hash` inválido o faltante                                        |
+| 404    | Dispositivo no encontrado o no pertenece al usuario                        |
+| 422    | El dispositivo no tiene video Jimi, canal inválido, o Jimi no devolvió URL |
+| 500    | Error interno                                                              |
+
+> Usa este endpoint para mostrar video en vivo canal por canal en tu app móvil. Si el dispositivo solo soporta un canal, usa el endpoint `/live` tradicional.
+
+---
+
 ## 2. Video Histórico
 
 El video histórico requiere 3 pasos secuenciales. El cliente (React Native) debe conservar los valores `instruction_id` y `app_id` entre llamadas.

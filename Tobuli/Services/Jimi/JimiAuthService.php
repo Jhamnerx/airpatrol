@@ -3,7 +3,6 @@
 namespace Tobuli\Services\Jimi;
 
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Gestiona la autenticación con la API de Jimi IoT.
@@ -97,7 +96,6 @@ class JimiAuthService
         $ttl = (int) config('jimi.token_ttl', 7000);
 
         $pwd    = (string) config('jimi.password', '');
-        Log::info('[JimiAuthService] Obteniendo nuevo token. Cuenta: ' . config('jimi.account') . ' Password: ' . $pwd);
         $pwdMd5 = md5($pwd);
 
         $result = $this->client->send('jimi.oauth.token.get', [
@@ -105,8 +103,6 @@ class JimiAuthService
             'user_pwd_md5' => $pwdMd5,
             'expires_in'   => $ttl,
         ]);
-
-        Log::info('[Jimi] Token obtenido', ['account' => config('jimi.account')]);
 
         return $this->cacheTokens($result, $ttl);
     }
@@ -120,7 +116,6 @@ class JimiAuthService
      */
     protected function cacheTokens(array $result, int $ttl): string
     {
-        Log::info('[JimiAuthService] Cacheando tokens. TTL: ' . $ttl . 's', ['result' => $result]);
         $accessToken  = $result['accessToken']  ?? '';
         $refreshToken = $result['refreshToken'] ?? '';
 

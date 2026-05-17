@@ -177,7 +177,7 @@ class JimiStreamingService
 
         $url = is_string($result) ? $result : ($result['url'] ?? $result['UrlCamera'] ?? '');
 
-       // Log::info('[JimiStreamingService] URL histórico obtenida', ['url' => $url]);
+        // Log::info('[JimiStreamingService] URL histórico obtenida', ['url' => $url]);
 
         return $url;
     }

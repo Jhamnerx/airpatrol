@@ -3,7 +3,6 @@
 namespace Tobuli\Services\Jimi;
 
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Cliente base para la API de Jimi IoT / Tracksolid.
@@ -76,15 +75,15 @@ class JimiClient
         $all['sign'] = self::generateSign($all, $this->appSecret);
 
         try {
-            $response = Http::asForm()->post($this->url, $all);
+            $response = Http::timeout(12)->connectTimeout(5)->asForm()->post($this->url, $all);
             $body     = $response->json();
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            throw new JimiException('No se pudo conectar con Jimi API (timeout): ' . $e->getMessage());
         } catch (\Throwable $e) {
-            Log::error('[Jimi] HTTP error', ['method' => $method, 'error' => $e->getMessage()]);
             throw new JimiException('Jimi HTTP request failed: ' . $e->getMessage());
         }
 
         if (!is_array($body) || !array_key_exists('code', $body)) {
-            Log::error('[Jimi] Respuesta inválida', ['method' => $method, 'body' => $body]);
             throw new JimiException('Respuesta inválida de Jimi API');
         }
 
@@ -92,7 +91,6 @@ class JimiClient
 
         if ($code !== 0) {
             $msg = $body['message'] ?? 'Error desconocido de Jimi API';
-            Log::error('[Jimi] API error', ['method' => $method, 'code' => $code, 'message' => $msg]);
             throw new JimiException($msg, $code, null, $body);
         }
 

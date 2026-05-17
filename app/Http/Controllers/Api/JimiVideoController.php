@@ -162,6 +162,14 @@ class JimiVideoController extends Controller
         $channel = (int) request('channel', 1);
         $date    = request('date');
 
+        if (empty($device->imei)) {
+            return response()->json(['error' => 'El dispositivo no tiene IMEI configurado.'], 422);
+        }
+
+        if ($channel < 0) {
+            return response()->json(['error' => 'El campo "channel" debe ser un entero mayor o igual a 0.'], 422);
+        }
+
         if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return response()->json(['error' => 'El campo "date" es requerido en formato Y-m-d.'], 422);
         }
@@ -181,6 +189,7 @@ class JimiVideoController extends Controller
         } catch (JimiException $e) {
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
+            Log::error('[JimiVideoApi] history cmd exception', ['device' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Error interno del servidor.'], 500);
         }
     }

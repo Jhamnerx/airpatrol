@@ -37,8 +37,11 @@ Content-Type: application/json
 ## Base URL
 
 ```
-https://tu-dominio.com/
+https://tu-dominio.com/api
 ```
+
+> Importante: en este proyecto las rutas de `routes/api.php` se publican con prefijo `/api`.
+> Ejemplo real: `/api/jimi/devices/{id}/history/cmd`
 
 ---
 
@@ -428,3 +431,16 @@ Content-Type: application/json
 | 422    | `El campo "instruction_id" es requerido.`        | Falta `instruction_id` en el Paso 2         |
 | 422    | Mensaje de error de Jimi                         | Error devuelto por el servidor Jimi IoT     |
 | 500    | `Error interno del servidor.`                    | Error inesperado en el servidor             |
+
+### Error 419 (CSRF token mismatch)
+
+Si llamas el endpoint como `/jimi/devices/...` (sin `/api`), puedes caer en rutas web y obtener 419.
+
+Usa siempre:
+
+- `POST /api/jimi/devices/{id}/history/cmd`
+- `POST /api/jimi/devices/{id}/history/list`
+- `POST /api/jimi/devices/{id}/history/stream`
+- `POST /api/jimi/devices/{id}/history/close`
+
+Recomendación adicional: envía `user_api_hash` por header `user-api-hash` (evita problemas de encoding en query string).

@@ -2,8 +2,6 @@
 
 namespace Tobuli\Services\Jimi;
 
-use Illuminate\Support\Facades\Log;
-
 /**
  * Servicio de Streaming de Jimi IoT.
  *
@@ -12,6 +10,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Métodos Jimi:
  *   - jimi.device.live.page.url           → getLiveStreamUrl()
+ *   - jimi.device.media.live.stream       → getLiveStreamChannelUrl()
  *   - jimi.device.history.video.page.url  → getHistoryStreamUrl()
  */
 class JimiStreamingService
@@ -43,6 +42,30 @@ class JimiStreamingService
             'type'         => '1',
             'voice'        => '1',
         ]);
+    }
+
+    /**
+     * Obtiene la URL de stream en vivo de un canal específico.
+     *
+     * Método: jimi.device.media.live.stream
+     *
+     * @param  string $imei     IMEI del dispositivo
+     * @param  int    $channel  Canal de cámara (JT808 desde 1 / Concox desde 0)
+     * @param  string $appId    ID de sesión del cliente (15 caracteres)
+     * @return string           URL de stream en vivo
+     */
+    public function getLiveStreamChannelUrl(string $imei, int $channel, string $appId): string
+    {
+        $result = $this->client->sendRaw('jimi.device.media.live.stream', [
+            'access_token' => $this->auth->getAccessToken(),
+            'imei'         => $imei,
+            'channel'      => (string) $channel,
+            'appId'        => $appId,
+        ]);
+
+        return is_string($result)
+            ? $result
+            : ($result['url'] ?? $result['UrlCamera'] ?? $result['result'] ?? '');
     }
 
     /**

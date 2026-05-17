@@ -399,6 +399,7 @@ Content-Type: application/json
 | Método | Ruta                                | Descripción                           |
 | ------ | ----------------------------------- | ------------------------------------- |
 | GET    | `/jimi/devices/{id}/live`           | URL de video en vivo                  |
+| POST   | `/jimi/devices/{id}/live/stream`    | URL de video en vivo por canal        |
 | POST   | `/jimi/devices/{id}/history/cmd`    | Paso 1: Enviar comando al dispositivo |
 | POST   | `/jimi/devices/{id}/history/list`   | Paso 2: Polling de segmentos          |
 | POST   | `/jimi/devices/{id}/history/stream` | Paso 3: URL WebSocket del segmento    |

@@ -81,6 +81,59 @@ class JimiVideoController extends Controller
     }
 
     /* ──────────────────────────────────────────────
+     |  VIDEO EN VIVO POR CANAL
+     |  POST api/jimi/devices/{id}/live/stream
+     |
+     |  Body: { "channel": 1, "app_id": "aB3xK9pLmQr7t" }
+     |
+     |  Response 200:
+     |  {
+     |    "url": "ws://...live.flv?secret=...",
+     |    "app_id": "aB3xK9pLmQr7t"
+     |  }
+     └─────────────────────────────────────────────*/
+    public function liveStreamChannel(int $id)
+    {
+        $device = $this->user->devices()->find($id);
+
+        if (!$device) {
+            return response()->json(['error' => 'Dispositivo no encontrado.'], 404);
+        }
+
+        if (!$device->hasJimiVideo()) {
+            return response()->json(['error' => 'Este dispositivo no tiene capacidad de video Jimi.'], 422);
+        }
+
+        if (!request()->has('channel') || request('channel') === '') {
+            return response()->json(['error' => 'El campo "channel" es requerido.'], 422);
+        }
+
+        $channel = (int) request('channel');
+        $appId   = (string) request('app_id', '');
+
+        if ($appId === '') {
+            $appId = $this->streaming->generateAppId();
+        }
+
+        try {
+            $url = $this->streaming->getLiveStreamChannelUrl($device->imei, $channel, $appId);
+
+            if (!$url) {
+                return response()->json(['error' => 'No se pudo obtener la URL de streaming.'], 422);
+            }
+
+            return response()->json([
+                'url'    => $url,
+                'app_id' => $appId,
+            ]);
+        } catch (JimiException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Error interno del servidor.'], 500);
+        }
+    }
+
+    /* ──────────────────────────────────────────────
      |  HISTÓRICO - PASO 1: ENVIAR COMANDO
      |  POST api/jimi/devices/{id}/history/cmd
      |

@@ -58,6 +58,7 @@ Route::group(['middleware' => ['auth.api', 'active_subscription'], 'namespace' =
 
     # Jimi Video API (React Native)
     Route::get('jimi/devices/{id}/live',            ['as' => 'api.jimi.live',           'uses' => '\App\Http\Controllers\Api\JimiVideoController@liveStream',      'middleware' => ['throttle:30,1']]);
+    Route::post('jimi/devices/{id}/live/stream',    ['as' => 'api.jimi.live.stream',    'uses' => '\App\Http\Controllers\Api\JimiVideoController@liveStreamChannel', 'middleware' => ['throttle:30,1']]);
     Route::post('jimi/devices/{id}/history/cmd',    ['as' => 'api.jimi.history.cmd',    'uses' => '\App\Http\Controllers\Api\JimiVideoController@historyCmd']);
     Route::post('jimi/devices/{id}/history/list',   ['as' => 'api.jimi.history.list',   'uses' => '\App\Http\Controllers\Api\JimiVideoController@historyList',     'middleware' => ['throttle:60,1']]);
     Route::post('jimi/devices/{id}/history/stream', ['as' => 'api.jimi.history.stream', 'uses' => '\App\Http\Controllers\Api\JimiVideoController@historyStreamUrl']);

@@ -75,7 +75,7 @@ class JimiClient
         $all['sign'] = self::generateSign($all, $this->appSecret);
 
         try {
-            $response = Http::timeout(12)->connectTimeout(5)->asForm()->post($this->url, $all);
+            $response = Http::timeout(12)->asForm()->post($this->url, $all);
             $body     = $response->json();
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             throw new JimiException('No se pudo conectar con Jimi API (timeout): ' . $e->getMessage());

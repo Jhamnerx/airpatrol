@@ -52,15 +52,16 @@ class SyncJimiPositions extends Command
         $devices = Device::jimi()
             ->whereNotNull('imei')
             ->where('imei', '!=', '')
-            ->get(['imei']);
+            ->get(['id', 'imei', 'jimi_model']);
 
         if ($devices->isEmpty()) {
             $this->warn('[Jimi] No hay dispositivos configurados con jimi_type.');
             return self::SUCCESS;
         }
 
-        // Construir set de IMEIs para lookup O(1)
-        $imeiSet = $devices->pluck('imei', 'imei')->toArray();
+        // Mapa imei → device para lookup O(1) y para refrescar jimi_model
+        $deviceByImei = $devices->keyBy('imei');
+        $imeiSet      = $deviceByImei->all();
 
         // 2. Pedir posiciones a la cuenta raíz y encolar
         $stack   = new PositionsStack();
@@ -86,6 +87,16 @@ class SyncJimiPositions extends Command
             // Solo procesar IMEIs registrados en el sistema local
             if (!array_key_exists($data['imei'], $imeiSet)) {
                 continue;
+            }
+
+            // Refrescar el modelo (mcType) del equipo si cambió o aún no se conoce.
+            // Se necesita para traducir el canal de cámara (Concox=base 0 / JT808=base 1).
+            $mcType = $location['mcType'] ?? null;
+            if ($mcType) {
+                $device = $deviceByImei->get($data['imei']);
+                if ($device && $device->jimi_model !== $mcType) {
+                    $device->forceFill(['jimi_model' => $mcType])->saveQuietly();
+                }
             }
 
             // --- Posición GPS principal ---

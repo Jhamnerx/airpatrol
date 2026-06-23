@@ -72,15 +72,16 @@ class JimiStreamController extends Controller
     public function historyListCmd(int $id)
     {
         $device  = $this->user->devices()->findOrFail($id);
-        $channel = (int) request('channel', 1);
+        $camera  = (int) request('channel', 1);          // índice de cámara 1-based
+        $channel = $device->toJimiChannel($camera);       // canal real según protocolo
         $date    = request('date', date('Y-m-d'));
 
         $instructionId = (string) \Illuminate\Support\Str::uuid();
         $appId         = $this->streaming->generateAppId();
 
         session([
-            'jimi_history_appid_'       . $device->id . '_' . $channel => $appId,
-            'jimi_history_instruction_' . $device->id . '_' . $channel => $instructionId,
+            'jimi_history_appid_'       . $device->id . '_' . $camera => $appId,
+            'jimi_history_instruction_' . $device->id . '_' . $camera => $instructionId,
         ]);
 
         try {
@@ -126,7 +127,7 @@ class JimiStreamController extends Controller
     public function historyStreamUrl(int $id)
     {
         $device       = $this->user->devices()->findOrFail($id);
-        $channel      = (int) request('channel', 1);
+        $channel      = $device->toJimiChannel((int) request('channel', 1));
         $appId        = request('appId') ?: $this->streaming->generateAppId();
         $beginTime    = request('beginTime', '');
         $endTime      = request('endTime', '');
@@ -156,13 +157,14 @@ class JimiStreamController extends Controller
     public function closeHistoryStream(int $id)
     {
         $device  = $this->user->devices()->findOrFail($id);
-        $channel = (int) request('channel', 1);
+        $camera  = (int) request('channel', 1);          // índice de cámara 1-based
+        $channel = $device->toJimiChannel($camera);       // canal real según protocolo
         $appId   = request('appId');
 
         if ($appId) {
             $this->streaming->closeStream($device->imei, $channel, $appId, '1');
-            session()->forget('jimi_history_appid_'       . $device->id . '_' . $channel);
-            session()->forget('jimi_history_instruction_' . $device->id . '_' . $channel);
+            session()->forget('jimi_history_appid_'       . $device->id . '_' . $camera);
+            session()->forget('jimi_history_instruction_' . $device->id . '_' . $camera);
         }
 
         return response()->json(['success' => true]);

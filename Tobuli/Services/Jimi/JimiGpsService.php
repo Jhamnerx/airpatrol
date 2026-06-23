@@ -154,8 +154,11 @@ class JimiGpsService
             'accStatus' => $location['accStatus'] ?? null,
             'raw'       => $location,
         ]);
-        // Usar gpsTime; si es null, usar hbTime como fallback
-        $timeStr = $location['gpsTime'] ?? $location['hbTime'] ?? '';
+        // Solo se usa el gpsTime real. Si Jimi no reporta un fix GPS nuevo,
+        // fixTime queda en 0 y la posición se descarta aguas arriba: NO se inventa
+        // un timestamp (eso provocaba que se guardaran posiciones con la fecha de hoy
+        // aunque el dispositivo estuviera offline/sin nueva posición).
+        $timeStr = $location['gpsTime'] ?? '';
 
         return [
             'imei'       => $location['imei'] ?? '',
@@ -235,12 +238,12 @@ class JimiGpsService
      * Las fechas de la API Jimi ya vienen en UTC — no se aplica conversión de zona.
      *
      * @param  string $datetime  Formato "Y-m-d H:i:s" (UTC) o timestamp UNIX en segundos
-     * @return int               Timestamp en milisegundos (UTC)
+     * @return int               Timestamp en milisegundos (UTC), o 0 si no hay fecha válida
      */
     private function parseTimestampMs(string $datetime): int
     {
         if (empty($datetime)) {
-            return (int) (microtime(true) * 1000);
+            return 0; // sin fecha → fixTime 0 → la posición se descarta (no se guarda nada)
         }
 
         // Si ya es numérico, asumir timestamp UNIX en segundos
@@ -253,7 +256,7 @@ class JimiGpsService
                 ->getTimestamp() * 1000;
         } catch (\Throwable $e) {
             Log::warning('[JimiGps] No se pudo parsear fecha', ['datetime' => $datetime, 'error' => $e->getMessage()]);
-            return (int) (microtime(true) * 1000);
+            return 0; // fecha inválida → no inventar "ahora"; descartar la posición
         }
     }
 }

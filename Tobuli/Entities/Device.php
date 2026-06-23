@@ -150,6 +150,7 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
         'lbs',
         'authentication',
         'jimi_type',
+        'jimi_model',
     );
 
     protected $appends = [
@@ -2201,5 +2202,53 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
     public function hasJimiVideo(): bool
     {
         return $this->jimi_type === self::JIMI_TYPE_VIDEO;
+    }
+
+    /**
+     * ¿El DVR usa protocolo Concox? (JC261, JC400, ...).
+     * En Concox los canales de cámara empiezan en 0; en JT808/1078 empiezan en 1.
+     *
+     * @see integration_jimi.md secciones 4.6/4.7/4.9/4.10
+     */
+    public function isJimiConcox(): bool
+    {
+        $model = strtoupper((string) $this->jimi_model);
+
+        if ($model === '') {
+            return false; // sin modelo conocido → asumimos JT808 (base 1), el caso por defecto
+        }
+
+        foreach ((array) config('jimi.video.concox_models', []) as $concox) {
+            if (str_starts_with($model, (string) $concox)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Base del numerado de canales del DVR: 0 (Concox) o 1 (JT808/1078).
+     */
+    public function jimiChannelBase(): int
+    {
+        return $this->isJimiConcox() ? 0 : 1;
+    }
+
+    /**
+     * Traduce un índice de cámara 1-based (el que envía la app: 1, 2, 3...)
+     * al número de canal real que espera Jimi para este modelo de equipo.
+     *
+     *   Concox       (base 0): cámara 1 → canal 0, cámara 2 → canal 1, ...
+     *   JT808/1078   (base 1): cámara 1 → canal 1, cámara 2 → canal 2, ...
+     *
+     * @param  int $camera  Índice de cámara 1-based recibido desde el cliente
+     * @return int          Canal real para la API Jimi
+     */
+    public function toJimiChannel(int $camera): int
+    {
+        $channel = $camera - (1 - $this->jimiChannelBase());
+
+        return max($channel, $this->jimiChannelBase());
     }
 }

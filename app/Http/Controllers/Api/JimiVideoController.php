@@ -108,7 +108,9 @@ class JimiVideoController extends Controller
             return response()->json(['error' => 'El campo "channel" es requerido.'], 422);
         }
 
-        $channel = (int) request('channel');
+        // La app envía un índice de cámara 1-based; lo traducimos al canal real
+        // según el protocolo del equipo (Concox base 0 / JT808 base 1).
+        $channel = $device->toJimiChannel((int) request('channel'));
         $appId   = (string) request('app_id', '');
 
         if ($appId === '') {
@@ -159,16 +161,27 @@ class JimiVideoController extends Controller
             return response()->json(['error' => 'Este dispositivo no tiene capacidad de video Jimi.'], 422);
         }
 
-        $channel = (int) request('channel', 1);
-        $date    = request('date');
+        if ($device->isOffline()) {
+            return response()->json([
+                'error'      => 'El dispositivo est\u00e1 offline. Debe estar en l\u00ednea para solicitar video hist\u00f3rico.',
+                'error_code' => 'DEVICE_OFFLINE',
+                'retryable'  => true,
+            ], 422);
+        }
+
+        $camera = (int) request('channel', 1);
+        $date   = request('date');
 
         if (empty($device->imei)) {
             return response()->json(['error' => 'El dispositivo no tiene IMEI configurado.'], 422);
         }
 
-        if ($channel < 0) {
-            return response()->json(['error' => 'El campo "channel" debe ser un entero mayor o igual a 0.'], 422);
+        if ($camera < 1) {
+            return response()->json(['error' => 'El campo "channel" (índice de cámara) debe ser un entero mayor o igual a 1.'], 422);
         }
+
+        // Traducción a canal real según protocolo del equipo (Concox base 0 / JT808 base 1).
+        $channel = $device->toJimiChannel($camera);
 
         if (!$date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return response()->json(['error' => 'El campo "date" es requerido en formato Y-m-d.'], 422);
@@ -187,11 +200,48 @@ class JimiVideoController extends Controller
                 'max_polls'       => 20,
             ]);
         } catch (JimiException $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            $payload = $this->buildJimiErrorPayload($e);
+
+            Log::warning('[JimiVideoApi] history cmd jimi error', [
+                'device_id'    => $id,
+                'imei'         => $device->imei,
+                'channel'      => $channel,
+                'date'         => $date,
+                'jimi_code'    => $e->getCode(),
+                'jimi_message' => $e->getMessage(),
+                'error_code'   => $payload['error_code'] ?? null,
+                'raw'          => $e->rawResponse,
+            ]);
+
+            return response()->json($payload, 422);
         } catch (\Throwable $e) {
             Log::error('[JimiVideoApi] history cmd exception', ['device' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Error interno del servidor.'], 500);
         }
+    }
+
+    /**
+     * Normaliza errores crudos de Jimi para respuestas de API estables y accionables.
+     */
+    private function buildJimiErrorPayload(JimiException $e): array
+    {
+        $message = trim((string) $e->getMessage());
+
+        if (stripos($message, 'device is not registered in the routing table') !== false) {
+            return [
+                'error'      => 'No se pudo enviar el comando al dispositivo. El equipo no est\u00e1 registrado en la tabla de enrutamiento de Jimi. Reinicia el dispositivo y vuelve a intentar en 1-2 minutos.',
+                'error_code' => 'JIMI_DEVICE_NOT_IN_ROUTING_TABLE',
+                'retryable'  => true,
+                'jimi_code'  => $e->getCode(),
+            ];
+        }
+
+        return [
+            'error'      => $message !== '' ? $message : 'Error de Jimi API.',
+            'error_code' => 'JIMI_API_ERROR',
+            'retryable'  => false,
+            'jimi_code'  => $e->getCode(),
+        ];
     }
 
     /* ──────────────────────────────────────────────
@@ -288,7 +338,8 @@ class JimiVideoController extends Controller
             return response()->json(['error' => 'Dispositivo no encontrado.'], 404);
         }
 
-        $channel      = (int) request('channel', 1);
+        // channel = índice de cámara 1-based (el mismo usado en history/cmd).
+        $channel      = $device->toJimiChannel((int) request('channel', 1));
         $appId        = request('app_id', '');
         $beginTime    = request('begin_time', '');
         $endTime      = request('end_time', '');
@@ -337,7 +388,8 @@ class JimiVideoController extends Controller
             return response()->json(['error' => 'Dispositivo no encontrado.'], 404);
         }
 
-        $channel = (int) request('channel', 1);
+        // channel = índice de cámara 1-based (el mismo usado al abrir el stream).
+        $channel = $device->toJimiChannel((int) request('channel', 1));
         $appId   = request('app_id', '');
         $type    = request('type', '1');
 

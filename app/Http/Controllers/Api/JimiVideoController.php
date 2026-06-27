@@ -362,18 +362,37 @@ class JimiVideoController extends Controller
             $appId = $this->streaming->generateAppId();
         }
 
-        // Jimi exige los datos del segmento elegido en history/list:
-        //   JT808 (JC450/JC451): begin_time + end_time
-        //   Concox (JC261/JC400): file_name_list
-        // Si no llega ninguno, Jimi responde "Parameter validation is not legal".
-        $hasTimeRange = $beginTime !== '' && $endTime !== '';
-        $hasFileList  = $fileNameList !== '';
+        // Jimi valida estricto: se envía SOLO el juego de parámetros del protocolo del equipo.
+        //   Concox (JC261/JC400): fileNameList (begin/end vacíos)
+        //   JT808  (JC450/JC451): beginTime + endTime (fileNameList vacío)
+        // Enviar el set equivocado → "Parameter validation is not legal".
+        if ($device->isJimiConcox() || $fileNameList !== '') {
+            // Concox: si la app no envió file_name_list, lo reconstruimos desde begin_time + canal.
+            // El nombre es determinista: YYYY_MM_DD_HH_MM_SS_<canal+1 a 2 dígitos>.mp4
+            // Ej: "2026-06-27 00:17:45" + canal 0 → "2026_06_27_00_17_45_01.mp4"
+            if ($fileNameList === '' && $beginTime !== '') {
+                $fileNameList = str_replace([' ', ':', '-'], '_', $beginTime) . sprintf('_%02d.mp4', $channel + 1);
+            }
 
-        if (!$hasTimeRange && !$hasFileList) {
-            return response()->json([
-                'error'      => 'Faltan datos del segmento: envía "begin_time" y "end_time" (equipos JT808: JC450/JC451) o "file_name_list" (equipos Concox: JC261/JC400), tomados del segmento elegido en history/list.',
-                'error_code' => 'MISSING_SEGMENT_PARAMS',
-            ], 422);
+            $beginTime = '';
+            $endTime   = '';
+
+            if ($fileNameList === '') {
+                return response()->json([
+                    'error'      => 'Equipo Concox: falta "file_name_list" (o "begin_time" para reconstruirlo) del segmento elegido en history/list.',
+                    'error_code' => 'MISSING_SEGMENT_PARAMS',
+                ], 422);
+            }
+        } else {
+            // JT808: requiere el rango de tiempo del segmento.
+            $fileNameList = '';
+
+            if ($beginTime === '' || $endTime === '') {
+                return response()->json([
+                    'error'      => 'Equipo JT808: faltan "begin_time" y "end_time" del segmento elegido en history/list.',
+                    'error_code' => 'MISSING_SEGMENT_PARAMS',
+                ], 422);
+            }
         }
 
         try {

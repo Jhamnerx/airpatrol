@@ -72,10 +72,10 @@ class JimiVideoController extends Controller
                 'device_name' => $device->name,
             ]);
         } catch (JimiException $e) {
-            Log::warning('[JimiVideoApi] live error', ['device' => $id, 'error' => $e->getMessage()]);
+            $this->safeLog('warning', '[JimiVideoApi] live error', ['device' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
-            Log::error('[JimiVideoApi] live exception', ['device' => $id, 'error' => $e->getMessage()]);
+            $this->safeLog('error', '[JimiVideoApi] live exception', ['device' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Error interno del servidor.'], 500);
         }
     }
@@ -202,7 +202,7 @@ class JimiVideoController extends Controller
         } catch (JimiException $e) {
             $payload = $this->buildJimiErrorPayload($e);
 
-            Log::warning('[JimiVideoApi] history cmd jimi error', [
+            $this->safeLog('warning', '[JimiVideoApi] history cmd jimi error', [
                 'device_id'    => $id,
                 'imei'         => $device->imei,
                 'channel'      => $channel,
@@ -215,8 +215,21 @@ class JimiVideoController extends Controller
 
             return response()->json($payload, 422);
         } catch (\Throwable $e) {
-            Log::error('[JimiVideoApi] history cmd exception', ['device' => $id, 'error' => $e->getMessage()]);
+            $this->safeLog('error', '[JimiVideoApi] history cmd exception', ['device' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Error interno del servidor.'], 500);
+        }
+    }
+
+    /**
+     * Registra en el log sin que un fallo de logging (p.ej. storage/logs sin permisos
+     * de escritura) propague una excepción y convierta la respuesta en un 500.
+     */
+    private function safeLog(string $level, string $message, array $context = []): void
+    {
+        try {
+            Log::$level($message, $context);
+        } catch (\Throwable $ignore) {
+            // El logging es best-effort: nunca debe tumbar la petición del cliente.
         }
     }
 

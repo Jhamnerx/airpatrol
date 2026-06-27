@@ -362,6 +362,20 @@ class JimiVideoController extends Controller
             $appId = $this->streaming->generateAppId();
         }
 
+        // Jimi exige los datos del segmento elegido en history/list:
+        //   JT808 (JC450/JC451): begin_time + end_time
+        //   Concox (JC261/JC400): file_name_list
+        // Si no llega ninguno, Jimi responde "Parameter validation is not legal".
+        $hasTimeRange = $beginTime !== '' && $endTime !== '';
+        $hasFileList  = $fileNameList !== '';
+
+        if (!$hasTimeRange && !$hasFileList) {
+            return response()->json([
+                'error'      => 'Faltan datos del segmento: envía "begin_time" y "end_time" (equipos JT808: JC450/JC451) o "file_name_list" (equipos Concox: JC261/JC400), tomados del segmento elegido en history/list.',
+                'error_code' => 'MISSING_SEGMENT_PARAMS',
+            ], 422);
+        }
+
         try {
             $url = $this->streaming->getHistoryStreamUrl(
                 $device->imei,
@@ -378,6 +392,17 @@ class JimiVideoController extends Controller
 
             return response()->json(['url' => $url, 'app_id' => $appId]);
         } catch (JimiException $e) {
+            $this->safeLog('warning', '[JimiVideoApi] history stream jimi error', [
+                'device_id'    => $id,
+                'imei'         => $device->imei,
+                'channel'      => $channel,
+                'beginTime'    => $beginTime,
+                'endTime'      => $endTime,
+                'fileNameList' => $fileNameList,
+                'jimi_code'    => $e->getCode(),
+                'jimi_message' => $e->getMessage(),
+                'raw'          => $e->rawResponse,
+            ]);
             return response()->json(['error' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             return response()->json(['error' => 'Error interno del servidor.'], 500);

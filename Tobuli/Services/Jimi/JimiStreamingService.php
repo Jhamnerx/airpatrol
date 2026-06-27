@@ -164,10 +164,12 @@ class JimiStreamingService
         //     'appId'        => $appId,
         // ]);
 
+        // Jimi valida estrictamente los parámetros: solo se envía 'channel' (tal como
+        // aparece en los ejemplos reales del doc, secciones 4.9/4.10). La tabla del doc
+        // dice 'channal', pero es un typo y enviarlo provoca "Parameter validation is not legal".
         $result = $this->client->sendRaw('jimi.device.media.history.stream', [
             'access_token' => $this->auth->getAccessToken(),
             'imei'         => $imei,
-            'channal'      => (int) $channel,
             'channel'      => (int) $channel,
             'beginTime'    => $beginTime,
             'endTime'      => $endTime,
@@ -198,7 +200,6 @@ class JimiStreamingService
             $this->client->send('jimi.device.media.close.stream', [
                 'access_token' => $this->auth->getAccessToken(),
                 'imei'         => $imei,
-                'channal'      => (int) $channel,
                 'channel'      => (int) $channel,
                 'type'         => $type,
                 'appId'        => $appId,

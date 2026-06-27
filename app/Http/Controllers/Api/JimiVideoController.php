@@ -163,7 +163,7 @@ class JimiVideoController extends Controller
 
         if ($device->isOffline()) {
             return response()->json([
-                'error'      => 'El dispositivo est\u00e1 offline. Debe estar en l\u00ednea para solicitar video hist\u00f3rico.',
+                'error'      => 'El dispositivo está offline. Debe estar en línea para solicitar video histórico.',
                 'error_code' => 'DEVICE_OFFLINE',
                 'retryable'  => true,
             ], 422);
@@ -229,7 +229,7 @@ class JimiVideoController extends Controller
 
         if (stripos($message, 'device is not registered in the routing table') !== false) {
             return [
-                'error'      => 'No se pudo enviar el comando al dispositivo. El equipo no est\u00e1 registrado en la tabla de enrutamiento de Jimi. Reinicia el dispositivo y vuelve a intentar en 1-2 minutos.',
+                'error'      => 'No se pudo enviar el comando al dispositivo. El equipo no está registrado en la tabla de enrutamiento de Jimi. Reinicia el dispositivo y vuelve a intentar en 1-2 minutos.',
                 'error_code' => 'JIMI_DEVICE_NOT_IN_ROUTING_TABLE',
                 'retryable'  => true,
                 'jimi_code'  => $e->getCode(),

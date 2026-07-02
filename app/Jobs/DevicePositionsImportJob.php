@@ -67,7 +67,7 @@ class DevicePositionsImportJob implements ShouldQueue
             $dbName = DatabaseService::instance()->getDatabaseName($device->traccar->database_id);
             $schema = Schema::connection($dbName);
 
-            $schema->table($table, function($t) use ($table) {
+            $schema->table($table, function ($t) use ($table) {
                 $t->integer('device_id')->nullable()->after('id');
                 $t->double('power')->nullable()->after('other');
             });

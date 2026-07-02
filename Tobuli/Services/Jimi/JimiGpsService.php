@@ -125,6 +125,108 @@ class JimiGpsService
     }
 
     /**
+     * Obtiene el historial de tramas (track) de UN dispositivo.
+     *
+     * Método: jimi.device.track.list
+     * Params: imei (solo 1), begin_time, end_time ("Y-m-d H:i:s", UTC)
+     *
+     * Restricciones de la API:
+     *   - Rango máximo de 7 días, dentro de los últimos 3 meses
+     *   - end_time debe ser anterior a la hora actual
+     *
+     * A diferencia de location.list (solo última posición), devuelve TODAS
+     * las tramas almacenadas, incluidas las buffereadas (gpsMode=1) que el
+     * equipo subió tarde. Es la misma fuente que usa el historial de TrackSolid.
+     *
+     * @param  string $imei
+     * @param  string $beginTime  "Y-m-d H:i:s" en UTC
+     * @param  string $endTime    "Y-m-d H:i:s" en UTC (anterior a ahora)
+     * @return array[]            Lista de puntos de track
+     */
+    public function getTrackList(string $imei, string $beginTime, string $endTime): array
+    {
+        $result = $this->client->send('jimi.device.track.list', [
+            'access_token' => $this->auth->getAccessToken(),
+            'imei'         => $imei,
+            'begin_time'   => $beginTime,
+            'end_time'     => $endTime,
+        ]);
+
+        if (!is_array($result)) {
+            return [];
+        }
+
+        // Respuesta normal: lista de puntos. Algunas versiones envuelven la
+        // lista junto a campos extra (ej. mileage) — buscar la primera lista
+        // de puntos válida dentro del resultado.
+        if (isset($result[0]) && is_array($result[0])) {
+            return $result;
+        }
+
+        foreach ($result as $value) {
+            if (is_array($value) && isset($value[0]) && is_array($value[0]) && array_key_exists('lat', $value[0])) {
+                return $value;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Convierte un punto de track (jimi.device.track.list) al formato de PositionsStack.
+     *
+     * Campos del punto según la doc oficial:
+     *   lat, lng     → coordenadas
+     *   gpsTime      → fixTime ("Y-m-d H:i:s" UTC)
+     *   gpsSpeed     → speed (km/h)
+     *   direction    → course
+     *   posType      → "1"=GPS, "2"=LBS, "3"=WIFI
+     *   satellite    → intensidad de señal GPS
+     *   ignition     → "ON" / "OFF"
+     *   accStatus    → estado ACC
+     *   gpsMode      → 0=tiempo real, 1=retransmitida (buffer)
+     *
+     * El punto NO incluye imei ni mcType: se pasan desde el contexto del device.
+     *
+     * @param  array       $point     Punto de la respuesta de jimi.device.track.list
+     * @param  string      $imei      IMEI del dispositivo consultado
+     * @param  string|null $protocol  Protocolo/modelo (jimi_model del device)
+     * @return array                  Formato listo para PositionsStack::add()
+     */
+    public function mapTrackToPositionData(array $point, string $imei, ?string $protocol = null): array
+    {
+        $posTypeMap = ['1' => 'GPS', '2' => 'LBS', '3' => 'WIFI'];
+        $posType    = $posTypeMap[(string) ($point['posType'] ?? '')] ?? ($point['posType'] ?? null);
+
+        $ignition = null;
+        if (isset($point['ignition'])) {
+            $ignition = strtoupper((string) $point['ignition']) === 'ON';
+        } elseif (isset($point['accStatus'])) {
+            // Verificado: accStatus llega como "ON"/"OFF" en track.list
+            $ignition = in_array(strtoupper((string) $point['accStatus']), ['ON', '1'], true);
+        }
+
+        return [
+            'imei'       => $imei,
+            'fixTime'    => $this->parseTimestampMs((string) ($point['gpsTime'] ?? '')),
+            'valid'      => !empty($point['gpsTime']),
+            'latitude'   => (float) ($point['lat'] ?? 0),
+            'longitude'  => (float) ($point['lng'] ?? 0),
+            'speed'      => round((float) ($point['gpsSpeed'] ?? 0) * 0.539957, 4), // km/h → knots
+            'altitude'   => 0.0,
+            'course'     => (float) ($point['direction'] ?? 0),
+            'protocol'   => $protocol ?: 'jimi',
+            'attributes' => array_filter([
+                'ignition'   => $ignition,
+                'sat'        => $point['satellite']  ?? null,
+                'posType'    => $posType,
+                'buffered'   => isset($point['gpsMode']) ? ((int) $point['gpsMode'] === 1) : null,
+                'confidence' => $point['confidence'] ?? null,
+            ], fn($v) => $v !== null),
+        ];
+    }
+
+    /**
      * Convierte una posición del formato Jimi al formato de PositionsStack.
      *
      * Campos reales de jimi.user.device.location.list (verificado):

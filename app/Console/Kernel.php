@@ -72,6 +72,7 @@ class Kernel extends ConsoleKernel
         'App\Console\Commands\DeleteInvalidFuelEventsCommand',
         'App\Console\Commands\DeviceServerReconfigCommand',
         'App\Console\Commands\SyncJimiPositions',
+        'App\Console\Commands\SyncJimiTracks',
         'App\Console\Commands\JimiDebug',
     ];
 
@@ -106,6 +107,11 @@ class Kernel extends ConsoleKernel
 
         $schedule
             ->command('jimi:sync-positions')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule
+            ->command('jimi:sync-tracks')
             ->everyMinute()
             ->withoutOverlapping();
 

@@ -12,22 +12,27 @@ use Tobuli\Services\Jimi\JimiException;
 use Tobuli\Services\Jimi\JimiGpsService;
 
 /**
- * Sincroniza posiciones GPS desde Jimi IoT hacia el sistema existente via PositionsStack.
+ * Sincroniza el ESTADO en vivo de los devices Jimi via location.list.
+ *
+ * ⚠ La fuente de verdad de las tramas GPS es jimi:sync-tracks (track.list).
+ *   Este comando queda como complemento:
+ *   - Refresca jimi_model (mcType) de los devices
+ *   - Inserta heartbeats (hbTime) para mantener el device "vivo" en el mapa
+ *   - Respaldo: inserta tramas GPS de >5 min que el track sync no guardó
+ *   location.list solo entrega la última posición conocida y a veces mezcla
+ *   gpsTime nuevo con coordenadas viejas — por eso NO se usa como fuente
+ *   principal de posiciones.
  *
  * ⚠ NO escribe directamente en DB. Usa PositionsStack (Redis) como pasarela
  *   para que el daemon PositionsWriter procese las posiciones normalmente.
- *
- * Flujo:
- *   1. Agrupa los devices locales por jimi_account (o cuenta raíz si es null)
- *   2. Para cada cuenta, consulta posiciones (jimi.user.device.location.list)
- *   3. Filtra solo IMEIs del grupo de esa cuenta
- *   4. Mapea y encola en Redis → PositionsWriter → traccar DB → eventos
  *
  * Uso:
  *   php artisan jimi:sync-positions
  *
  * Schedule recomendado (cada minuto):
  *   $schedule->command('jimi:sync-positions')->everyMinute()->withoutOverlapping();
+ *
+ * @see App\Console\Commands\SyncJimiTracks  Fuente principal de tramas GPS
  */
 class SyncJimiPositions extends Command
 {
@@ -99,28 +104,59 @@ class SyncJimiPositions extends Command
                 }
             }
 
-            // --- Posición GPS principal ---
-            if ($data['fixTime'] > 0) {
+            // --- Posición GPS principal (solo como RESPALDO de jimi:sync-tracks) ---
+            // La fuente de verdad de las tramas GPS es jimi:sync-tracks (track.list):
+            // location.list solo entrega la última posición conocida y a veces mezcla
+            // gpsTime nuevo con coordenadas viejas (dibuja saltos/líneas rectas).
+            // Por eso aquí solo se insertan tramas con más de 5 min de antigüedad que
+            // el track sync no haya guardado (claves jimi:seen compartidas): si
+            // track.list funciona, ya las insertó con coordenadas correctas y esto
+            // no hace nada; si está caído, el sistema sigue recibiendo posiciones
+            // con ~5 min de retraso.
+            $ageMs = (int) (microtime(true) * 1000) - $data['fixTime'];
+            if ($data['fixTime'] > 0 && $ageMs >= 300000) {
                 $redisKey = 'jimi:lastfix:' . $data['imei'];
                 $lastFix  = $redis->get($redisKey);
-                if ($lastFix !== null && (int) $lastFix === $data['fixTime']) {
+                // Dedup monotónica: location.list nunca entrega tramas antiguas
+                // válidas, así que todo fixTime <= al último se descarta. (El TTL
+                // corto anterior con igualdad exacta reinsertaba la misma trama
+                // cada hora con el vehículo parado.)
+                if ($lastFix !== null && (int) $lastFix >= $data['fixTime']) {
                     $skipped++;
                 } else {
-                    $redis->setex($redisKey, 3600, $data['fixTime']); // TTL 1h
-                    $stack->add($data);
-                    $total++;
+                    $redis->setex($redisKey, 604800, $data['fixTime']); // TTL 7 días
+
+                    $seenKey = 'jimi:seen:' . $data['imei'] . ':' . $data['fixTime'];
+                    if ($redis->setnx($seenKey, 1)) {
+                        $redis->expire($seenKey, 172800); // 2 días
+                        $stack->add($data);
+                        $total++;
+                    } else {
+                        $skipped++; // ya la insertó jimi:sync-tracks
+                    }
                 }
             }
 
             // --- Posición heartbeat (hbTime > gpsTime) ---
+            // Mantiene el device "vivo" en el mapa cuando manda heartbeats sin fix
+            // GPS nuevo (normalmente parado). Se descarta si sus coordenadas no
+            // coinciden con la última posición GPS confiable (jimi:lastpos, escrita
+            // por jimi:sync-tracks): significa que location.list trae coordenadas
+            // atrasadas y guardarlas dibujaría un punto falso.
             $hbData = $this->gpsService->mapToHbPositionData($location);
             if ($hbData && $hbData['fixTime'] > 0) {
+                $lastPosRaw = $redis->get('jimi:lastpos:' . $hbData['imei']);
+                $lastPos    = $lastPosRaw ? json_decode($lastPosRaw, true) : null;
+                $staleCoords = is_array($lastPos)
+                    && (abs((float) $lastPos['lat'] - $hbData['latitude']) > 0.001
+                        || abs((float) $lastPos['lng'] - $hbData['longitude']) > 0.001);
+
                 $hbKey  = 'jimi:lasthb:' . $hbData['imei'];
                 $lastHb = $redis->get($hbKey);
-                if ($lastHb !== null && (int) $lastHb === $hbData['fixTime']) {
+                if ($staleCoords || ($lastHb !== null && (int) $lastHb >= $hbData['fixTime'])) {
                     $skipped++;
                 } else {
-                    $redis->setex($hbKey, 3600, $hbData['fixTime']); // TTL 1h
+                    $redis->setex($hbKey, 604800, $hbData['fixTime']); // TTL 7 días
                     $stack->add($hbData);
                     $total++;
                 }

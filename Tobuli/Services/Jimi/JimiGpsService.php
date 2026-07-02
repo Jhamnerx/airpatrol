@@ -342,7 +342,7 @@ class JimiGpsService
      * @param  string $datetime  Formato "Y-m-d H:i:s" (UTC) o timestamp UNIX en segundos
      * @return int               Timestamp en milisegundos (UTC), o 0 si no hay fecha válida
      */
-    private function parseTimestampMs(string $datetime): int
+    public function parseTimestampMs(string $datetime): int
     {
         if (empty($datetime)) {
             return 0; // sin fecha → fixTime 0 → la posición se descarta (no se guarda nada)

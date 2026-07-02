@@ -71,6 +71,11 @@ class SyncJimiPositions extends Command
         // 2. Pedir posiciones a la cuenta raíz y encolar
         $stack   = new PositionsStack();
         $redis   = Redis::connection('process');
+
+        if ($redis->exists(SyncJimiTracks::COOLDOWN_KEY)) {
+            $this->warn('[Jimi] En pausa por límite de cuota de la API (quota-cooldown activo).');
+            return self::SUCCESS;
+        }
         $total   = 0;
         $skipped = 0;
         $errors  = 0;
@@ -81,6 +86,10 @@ class SyncJimiPositions extends Command
             $this->error('[Jimi] No se pudieron obtener posiciones de la cuenta raíz.');
             return self::FAILURE;
         }
+
+        // Cachear la respuesta cruda para jimi:sync-tracks: así decide qué devices
+        // tienen tramas nuevas sin gastar llamadas extra de la cuota diaria de Jimi
+        $redis->setex('jimi:locations:cache', 120, json_encode($locations));
 
         foreach ($locations as $location) {
             $data = $this->gpsService->mapToPositionData($location);
@@ -184,11 +193,31 @@ class SyncJimiPositions extends Command
         try {
             return $this->gpsService->getLocationsByAccount($account);
         } catch (JimiException $e) {
+            if ($e->isRateLimit()) {
+                // Cuota de API agotada → activar pausa global y NO reintentar
+                Redis::connection('process')->setex(SyncJimiTracks::COOLDOWN_KEY, SyncJimiTracks::COOLDOWN_TTL, 1);
+                Log::warning('[Jimi] Límite de cuota de API alcanzado — pausa global', [
+                    'account' => $account,
+                    'error'   => $e->getMessage(),
+                ]);
+                $this->error("[Jimi] {$account}: " . $e->getMessage());
+                return null;
+            }
+
+            if (!$e->isTokenError()) {
+                Log::error('[Jimi] Error al obtener posiciones', [
+                    'account' => $account,
+                    'error'   => $e->getMessage(),
+                    'code'    => $e->getCode(),
+                ]);
+                $this->error("[Jimi] {$account}: " . $e->getMessage());
+                return null;
+            }
+
             // Token inválido/expirado → renovar y reintentar una vez
-            Log::warning('[Jimi] Error al obtener posiciones, renovando token...', [
+            Log::warning('[Jimi] Token inválido al obtener posiciones, renovando...', [
                 'account' => $account,
                 'error'   => $e->getMessage(),
-                'code'    => $e->getCode(),
             ]);
 
             $this->authService->forgetToken();

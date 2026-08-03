@@ -2251,4 +2251,59 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
 
         return max($channel, $this->jimiChannelBase());
     }
+
+    // -------------------------------------------------------------------------
+    // Modelo en Traccar (tc_devices.model)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Opciones del selector de modelo, agrupadas por protocolo.
+     *
+     * Debe ser un selector cerrado: Jt808ProtocolDecoder compara el modelo
+     * contra un Set exacto (JC371, JC181, JC182, JC450, JC451). Una grafía
+     * distinta no da error, simplemente deja de decodificar la extensión 0xE8
+     * y pierde atributos en silencio.
+     */
+    public static function traccarModelOptions(): array
+    {
+        $models = (array) config('traccar.models', []);
+
+        return [
+            'JT808 / JT1078' => array_combine($models['jt808'] ?? [], $models['jt808'] ?? []),
+            'GT06'           => array_combine($models['gt06'] ?? [], $models['gt06'] ?? []),
+        ];
+    }
+
+    /** ¿El valor es un modelo que Traccar reconoce? */
+    public static function isValidTraccarModel(?string $model): bool
+    {
+        if (!$model) {
+            return false;
+        }
+
+        $models = (array) config('traccar.models', []);
+
+        return in_array($model, array_merge($models['jt808'] ?? [], $models['gt06'] ?? []), true);
+    }
+
+    /**
+     * Modelo a propagar a tc_devices.model.
+     *
+     * Las unidades JC450PRO se registran como JC450 porque el Set de Traccar
+     * no incluye el PRO y, sin coincidencia exacta, se pierde el 0xE8.
+     */
+    public function traccarModel(): ?string
+    {
+        $model = strtoupper(trim((string) $this->jimi_model));
+
+        if ($model === '') {
+            return null;
+        }
+
+        if (str_starts_with($model, 'JC450')) {
+            return 'JC450';
+        }
+
+        return self::isValidTraccarModel($model) ? $model : null;
+    }
 }

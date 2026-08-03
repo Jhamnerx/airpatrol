@@ -384,6 +384,19 @@ Route::group(['middleware' => ['auth', 'active_subscription'], 'namespace' => 'F
     Route::post('jimi/devices/{id}/history/list', ['as' => 'jimi.history_list', 'uses' => 'JimiStreamController@historyList']);
     Route::post('jimi/devices/{id}/history/stream-url', ['as' => 'jimi.history_stream_url', 'uses' => 'JimiStreamController@historyStreamUrl']);
     Route::post('jimi/devices/{id}/history/close', ['as' => 'jimi.history_close', 'uses' => 'JimiStreamController@closeHistoryStream']);
+
+    # Video por Traccar (JT808/JT1078). Corre en paralelo a las rutas jimi/*
+    Route::get('traccar/devices/{id}/live', ['as' => 'traccar.live_stream', 'uses' => 'TraccarStreamController@liveStream']);
+    Route::post('traccar/devices/{id}/live/start', ['as' => 'traccar.live_start', 'uses' => 'TraccarStreamController@startLive']);
+    Route::post('traccar/devices/{id}/live/stop', ['as' => 'traccar.live_stop', 'uses' => 'TraccarStreamController@stopLive']);
+    Route::get('traccar/devices/{id}/history', ['as' => 'traccar.history_stream', 'uses' => 'TraccarStreamController@historyStream']);
+    Route::post('traccar/devices/{id}/history/query', ['as' => 'traccar.history_query', 'uses' => 'TraccarStreamController@queryResources']);
+    Route::post('traccar/devices/{id}/history/list', ['as' => 'traccar.history_list', 'uses' => 'TraccarStreamController@listResources']);
+    Route::post('traccar/devices/{id}/history/play', ['as' => 'traccar.history_play', 'uses' => 'TraccarStreamController@playback']);
+    Route::post('traccar/devices/{id}/history/control', ['as' => 'traccar.history_control', 'uses' => 'TraccarStreamController@playbackControl']);
+    Route::post('traccar/devices/{id}/history/clip', ['as' => 'traccar.history_clip', 'uses' => 'TraccarStreamController@requestClip']);
+    Route::post('traccar/devices/{id}/media', ['as' => 'traccar.media', 'uses' => 'TraccarStreamController@media']);
+    Route::get('traccar/devices/{id}/media/{filename}', ['as' => 'traccar.media_file', 'uses' => 'TraccarStreamController@mediaFile'])->where('filename', '[^/]+');
     Route::get('device_media/images/{device_id?}', ['as' => 'device_media.get_images', 'uses' => 'DeviceMediaController@getImages']);
     Route::get('device_media/images_table/{device_id?}', ['as' => 'device_media.get_images_table', 'uses' => 'DeviceMediaController@getImagesTable']);
     Route::get('device_media/image/{device_id?}/{filename?}', ['as' => 'device_media.get_image', 'uses' => 'DeviceMediaController@getImage']);

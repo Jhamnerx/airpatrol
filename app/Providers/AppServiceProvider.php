@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider {
         
         Route::singularResourceParameters(false);
 
+        \Tobuli\Entities\Device::observe(\App\Observers\DeviceTraccarModelObserver::class);
+
         try {
             $this->app['config']->set('app.name', settings('main_settings.server_name'));
         } catch (\Exception $exception) {}

@@ -1248,7 +1248,42 @@ class PositionsWriter
 
         $this->eventWriteService->write($this->events);
 
+        $this->requestEventVideos();
+
         $this->events = [];
+    }
+
+    /**
+     * Pide al equipo el video del evento por su hora (estilo Wialon), en vez de
+     * esperar a que lo suba solo. Va en cola: no puede frenar la escritura de
+     * posiciones.
+     *
+     * Solo Concox (JC261/JC400) tienen comando de captura por hora. En JC450 la
+     * evidencia llega por el flujo automático alarmLabel + VIDEOUPLOAD.
+     */
+    protected function requestEventVideos()
+    {
+        $config = config('traccar.video.event_capture');
+
+        if (empty($config['enabled']) || !$this->device->isJimiConcox()) {
+            return;
+        }
+
+        foreach ($this->events as $event) {
+            if ($config['types'] && !in_array($event->type, $config['types'], true)) {
+                continue;
+            }
+
+            \App\Jobs\RequestEventVideoJob::dispatch(
+                $this->device->id,
+                $event->time ?: $this->position->time,
+                $event->type
+            );
+
+            // Un solo clip por lote: el equipo tarda en generarlo y varias
+            // alertas del mismo suceso pedirían el mismo tramo.
+            break;
+        }
     }
 
     protected function getProtocolConfig($protocol, $key)

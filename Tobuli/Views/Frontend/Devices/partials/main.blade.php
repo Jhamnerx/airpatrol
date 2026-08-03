@@ -36,6 +36,23 @@
     </div>
 @endif
 
+@if (isAdmin())
+    <div class="form-group">
+        {!! Form::label('jimi_model', 'Modelo de cámara (Traccar)') !!}
+        {!! Form::select(
+            'jimi_model',
+            ['' => '— Sin cámara —'] + Tobuli\Entities\Device::traccarModelOptions(),
+            $item->jimi_model,
+            ['class' => 'form-control']
+        ) !!}
+        <span class="help-block" style="margin-bottom:0;">
+            Se propaga a <code>tc_devices.model</code>. Debe coincidir exactamente con la lista:
+            un valor distinto no da error, pero Traccar deja de decodificar atributos del equipo.
+            El cambio en el decoder aplica cuando el equipo reconecta.
+        </span>
+    </div>
+@endif
+
 @if (isAdmin() && Auth::user()->can('view', $item, 'expiration_date'))
     <div class="form-group">
         {!! Form::label('expiration_date', trans('validation.attributes.expiration_date').':') !!}

@@ -218,6 +218,7 @@ class HistoryModalHelper extends ModalHelper {
                                 't' => Formatter::time()->convert($position->time),
                                 'a' => Formatter::altitude()->format($position->altitude),
                                 's' => Formatter::speed()->format($position->speed),
+                                'd' => (float) ($position->distance ?? 0),
                                 'c' => $position->color,
                                 'v' => $position->valid,
                                 'lat' => $position->latitude,

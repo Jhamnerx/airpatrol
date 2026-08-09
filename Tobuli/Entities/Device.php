@@ -151,6 +151,11 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
         'authentication',
         'jimi_type',
         'jimi_model',
+        'route_color_type',
+        'route_color',
+        'route_speed_ranges',
+        'route_sensor_id',
+        'route_schedule',
     );
 
     protected $appends = [
@@ -200,6 +205,26 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
     ];
 
     protected $hidden = ['app_uuid'];
+
+    /**
+     * Config de color de la ruta del historial para el visor.
+     * JSON corrupto => null (el frontend aplica sus defaults).
+     */
+    public function getRouteConfig(): array
+    {
+        $type = $this->route_color_type ?: 'trips';
+
+        if (!in_array($type, ['trips', 'single', 'speed', 'sensor', 'schedule'])) {
+            $type = 'trips';
+        }
+
+        return [
+            'type'     => $type,
+            'color'    => $this->route_color,
+            'ranges'   => json_decode((string) $this->route_speed_ranges) ?: null,
+            'schedule' => json_decode((string) $this->route_schedule) ?: null,
+        ];
+    }
 
     private $attributesRelations = [
         'users_emails' => ['users'],

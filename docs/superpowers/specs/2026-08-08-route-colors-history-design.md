@@ -23,8 +23,11 @@ historial la lee y pinta la ruta según el modo.
 1. **El color se calcula en el FRONTEND** (`resources/assets/js/controller/history.js`).
    El mecanismo de dibujo ya es segmentado: `parse()` (líneas ~397-424) crea una
    `L.polyline` nueva cada vez que cambia `position.c`. No se toca el pipeline backend
-   de History ni los plugins existentes (`AppendRouteColor`, `business_private_drive`,
-   `route_color`); el color backend (`#0000FF`) queda como fallback si falta config.
+   de History; PERO el visor web ahora recalcula SIEMPRE el color por posición según el
+   modo del vehículo, así que los colores de los plugins backend (`AppendRouteColor`,
+   `business_private_drive`, `route_color`) quedan reemplazados en el mapa del historial
+   (decisión aceptada junto con el default `trips`; esos plugins están inactivos en esta
+   instalación y siguen intactos para API móvil/reportes).
 2. Los datos que recibe el JS ya están listos para los modos:
    - `position.s` = velocidad **ya convertida a la unidad de la app** (kph/mph/kn) —
      los rangos del editor se comparan contra este valor, sin conversión.

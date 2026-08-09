@@ -218,11 +218,14 @@ class Device extends AbstractEntity implements DisplayInterface, FcmTokenableInt
             $type = 'trips';
         }
 
+        $ranges = json_decode((string) $this->route_speed_ranges);
+        $schedule = json_decode((string) $this->route_schedule);
+
         return [
             'type'     => $type,
             'color'    => $this->route_color,
-            'ranges'   => json_decode((string) $this->route_speed_ranges) ?: null,
-            'schedule' => json_decode((string) $this->route_schedule) ?: null,
+            'ranges'   => is_array($ranges) && $ranges ? $ranges : null,
+            'schedule' => is_object($schedule) ? $schedule : null,
         ];
     }
 

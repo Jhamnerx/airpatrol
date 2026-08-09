@@ -54,4 +54,17 @@ class DeviceRouteConfigTest extends TestCase
         $this->assertEquals(40, $config['ranges'][1]->from);
         $this->assertEquals('06:00', $config['schedule']->day_from);
     }
+
+    public function testWrongShapeJsonDecodesToNull()
+    {
+        $device = new Device([
+            'route_speed_ranges' => '5',
+            'route_schedule'     => '"hello"',
+        ]);
+
+        $config = $device->getRouteConfig();
+
+        $this->assertNull($config['ranges']);
+        $this->assertNull($config['schedule']);
+    }
 }

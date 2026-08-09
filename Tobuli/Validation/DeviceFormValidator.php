@@ -37,6 +37,7 @@ class DeviceFormValidator extends Validator
             'route_color'         => 'sometimes|nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'route_speed_ranges'  => 'sometimes|nullable|string',
             'route_schedule'      => 'sometimes|nullable|string',
+            'route_sensor_id'     => 'sometimes|nullable|integer',
         ],
         'update' => [
             'imei'                => 'sometimes|required|unique:devices,imei,%s',
@@ -65,6 +66,7 @@ class DeviceFormValidator extends Validator
             'route_color'         => 'sometimes|nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'route_speed_ranges'  => 'sometimes|nullable|string',
             'route_schedule'      => 'sometimes|nullable|string',
+            'route_sensor_id'     => 'sometimes|nullable|integer',
         ],
     ];
 

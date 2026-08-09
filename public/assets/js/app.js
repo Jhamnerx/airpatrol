@@ -8498,7 +8498,7 @@ function History() {
     if (!$.isArray(ranges) || !ranges.length) return ROUTE_DEFAULT_RANGES;
 
     for (var i = 0; i < ranges.length; i++) {
-      if (typeof ranges[i].from !== "number" || !/^#[0-9a-fA-F]{3,8}$/.test(ranges[i].color))
+      if (!ranges[i] || typeof ranges[i].from !== "number" || !/^#[0-9a-fA-F]{3,8}$/.test(ranges[i].color))
         return ROUTE_DEFAULT_RANGES;
     }
 

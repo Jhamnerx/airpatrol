@@ -367,7 +367,10 @@
     }
 
     var initialRanges = {!! $routeRangesJson !!};
-    var ranges = ($.isArray(initialRanges) && initialRanges.length)
+    initialRanges = $.grep($.isArray(initialRanges) ? initialRanges : [], function (r) {
+        return r && typeof r.from === 'number';
+    });
+    var ranges = initialRanges.length
         ? cloneRanges(initialRanges)
         : cloneRanges(DEFAULT_RANGES);
 

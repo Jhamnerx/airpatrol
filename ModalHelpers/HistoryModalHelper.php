@@ -286,6 +286,7 @@ class HistoryModalHelper extends ModalHelper {
         return [
             'items' => $items,
             'sensors' => $sensors,
+            'route' => $device->getRouteConfig(),
 
             'classes' => [
                 self::STATUS_DRIVE => [

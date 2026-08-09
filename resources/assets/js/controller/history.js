@@ -288,6 +288,8 @@ function History() {
     _this.polylineDecorator = null;
     _this.polylinePoints.clearLayers();
 
+    _this.routeLegendRemove();
+
     app.map.off("moveend", _this.polylinePointsCheck);
 
     if (typeof clear == "undefined") $("#ajax-history").html("");
@@ -372,6 +374,155 @@ function History() {
     _this.polylinePoints.addTo(app.map);
   };
 
+  // --- Colores del recorrido (config por vehículo, window.history_route) ---
+  var ROUTE_TRIP_PALETTE = [
+    "#2563eb", "#16a34a", "#0891b2", "#7c3aed", "#db2777",
+    "#ea580c", "#ca8a04", "#0d9488", "#9333ea", "#dc2626",
+  ];
+  var ROUTE_STOP_COLOR = "#94a3b8";
+  var ROUTE_SINGLE_DEFAULT = "#2563eb";
+  var ROUTE_DEFAULT_RANGES = [
+    { from: 0, to: 40, color: "#22d3ee" },
+    { from: 40, to: 60, color: "#3b82f6" },
+    { from: 60, to: 90, color: "#6366f1" },
+    { from: 90, to: 120, color: "#a855f7" },
+    { from: 120, to: null, color: "#ef4444" },
+  ];
+  var ROUTE_DEFAULT_SCHEDULE = {
+    day_from: "06:00",
+    day_to: "18:00",
+    day_color: "#2563eb",
+    night_color: "#000000",
+  };
+
+  _this.routeLegend = null;
+
+  _this.routeMode = function () {
+    var route = window.history_route || null;
+
+    if (!route || !route.type) return "trips";
+
+    // el modo sensor aún no existe: cae a speed
+    var type = route.type === "sensor" ? "speed" : route.type;
+
+    if (["trips", "single", "speed", "schedule"].indexOf(type) < 0) type = "trips";
+
+    return type;
+  };
+
+  _this.routeRanges = function () {
+    var route = window.history_route || {};
+    var ranges = route.ranges;
+
+    if (!$.isArray(ranges) || !ranges.length) return ROUTE_DEFAULT_RANGES;
+
+    for (var i = 0; i < ranges.length; i++) {
+      if (typeof ranges[i].from !== "number" || !ranges[i].color) return ROUTE_DEFAULT_RANGES;
+    }
+
+    return ranges;
+  };
+
+  _this.routeSchedule = function () {
+    var route = window.history_route || {};
+    var s = route.schedule;
+
+    if (!s || !/^\d\d:\d\d$/.test(s.day_from || "") || !/^\d\d:\d\d$/.test(s.day_to || ""))
+      return ROUTE_DEFAULT_SCHEDULE;
+
+    return {
+      day_from: s.day_from,
+      day_to: s.day_to,
+      day_color: s.day_color || ROUTE_DEFAULT_SCHEDULE.day_color,
+      night_color: s.night_color || ROUTE_DEFAULT_SCHEDULE.night_color,
+    };
+  };
+
+  _this.routeColorAt = function (mode, position, itemColor) {
+    if (mode === "single") {
+      return (window.history_route && window.history_route.color) || ROUTE_SINGLE_DEFAULT;
+    }
+
+    if (mode === "speed") {
+      var spd = parseFloat(position.s) || 0;
+      var ranges = _this.routeRanges();
+
+      for (var i = 0; i < ranges.length; i++) {
+        if (ranges[i].to === null || typeof ranges[i].to === "undefined" || spd < ranges[i].to)
+          return ranges[i].color;
+      }
+
+      return ranges[ranges.length - 1].color;
+    }
+
+    if (mode === "schedule") {
+      var s = _this.routeSchedule();
+      var hm = (position.t || "").substr(11, 5); // position.t ya viene en la TZ del usuario
+      var day;
+
+      if (s.day_from <= s.day_to) {
+        day = hm >= s.day_from && hm < s.day_to;
+      } else {
+        // rango que cruza medianoche, ej. 20:00 -> 06:00
+        day = hm >= s.day_from || hm < s.day_to;
+      }
+
+      return day ? s.day_color : s.night_color;
+    }
+
+    // trips (y cualquier fallback): color por item; si no hay, el del backend
+    return itemColor || position.c;
+  };
+
+  _this.routeLegendAdd = function () {
+    _this.routeLegendRemove();
+
+    if (_this.routeMode() !== "speed") return;
+
+    var ranges = _this.routeRanges();
+    var scale = ranges.length > 1 ? ranges[ranges.length - 1].from : 100;
+    var bar = '<div style="display:flex;border-radius:2px;overflow:hidden;">';
+    var labels = '<div style="display:flex;font-size:10px;color:#333;">';
+
+    $.each(ranges, function (i, r) {
+      var w = r.to === null ? 18 : Math.max(6, ((r.to - r.from) / scale) * 82);
+
+      bar += '<div style="width:' + w + '%;height:8px;background:' + r.color + ';"></div>';
+      labels +=
+        '<div style="width:' + w + '%;">' + r.from +
+        (r.to === null ? '<span style="float:right;">&#8734;</span>' : "") +
+        "</div>";
+    });
+
+    bar += "</div>";
+    labels += "</div>";
+
+    var legend = L.control({ position: "bottomleft" });
+
+    legend.onAdd = function () {
+      var div = L.DomUtil.create("div", "history-route-legend");
+
+      div.style.background = "rgba(255,255,255,0.9)";
+      div.style.padding = "4px 8px";
+      div.style.borderRadius = "4px";
+      div.style.width = "220px";
+      div.style.boxShadow = "0 1px 4px rgba(0,0,0,0.3)";
+      div.innerHTML = bar + labels;
+
+      return div;
+    };
+
+    legend.addTo(app.map);
+    _this.routeLegend = legend;
+  };
+
+  _this.routeLegendRemove = function () {
+    if (_this.routeLegend) {
+      app.map.removeControl(_this.routeLegend);
+      _this.routeLegend = null;
+    }
+  };
+
   _this.parse = function () {
     _this.clear("yes");
 
@@ -392,7 +543,21 @@ function History() {
         lastDrive = null,
         lastStop = null;
 
+      var routeMode = _this.routeMode(),
+        routeDriveCount = 0;
+
       $.each(window.history_items, function (index, item) {
+        var itemColor = null;
+
+        if (routeMode === "trips" && typeof item.positions !== "undefined") {
+          if (item.status == 1) {
+            itemColor = ROUTE_TRIP_PALETTE[routeDriveCount % ROUTE_TRIP_PALETTE.length];
+            routeDriveCount++;
+          } else {
+            itemColor = ROUTE_STOP_COLOR;
+          }
+        }
+
         if (typeof item.positions !== "undefined") {
           $.each(item.positions, function (pindex, position) {
             _this.positions.push(position);
@@ -405,6 +570,8 @@ function History() {
               lat: parseFloat(position.lat),
               lng: parseFloat(position.lng),
             };
+
+            position.c = _this.routeColorAt(routeMode, position, itemColor);
 
             if (poly != null && lastColor !== position.c) {
               poly.addLatLng(point);
@@ -489,6 +656,8 @@ function History() {
       _this.markers = markers;
       _this.polylines = polylines;
       _this.polylines.addTo(app.map);
+
+      _this.routeLegendAdd();
 
       app.map.on("moveend", _this.polylinePointsCheck);
 

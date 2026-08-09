@@ -271,3 +271,219 @@
     {!! Form::select('timezone_id', $timezones, empty($timezone_id) ? 0 : $timezone_id, ['class' => 'form-control']) !!}
     <small>{!! trans('front.by_default_time') !!}</small>
 </div>
+
+@php
+    $routeColorType = in_array($item->route_color_type, ['trips', 'single', 'speed', 'schedule'])
+        ? $item->route_color_type
+        : 'trips';
+    $routeColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $item->route_color)
+        ? $item->route_color
+        : '#2563eb';
+    // json_decode + json_encode: si el JSON guardado está corrupto, al JS llega null (usa defaults)
+    $routeRangesJson = json_encode(json_decode((string) $item->route_speed_ranges) ?: null);
+    $routeScheduleJson = json_encode(json_decode((string) $item->route_schedule) ?: null);
+@endphp
+
+<div class="form-group" id="route-color-settings">
+    <label>Colores del recorrido — Historial:</label>
+
+    {{-- inicializados server-side: si el JS no llegara a ejecutarse, un guardado no borra la config --}}
+    <input type="hidden" name="route_speed_ranges" value="{{ $routeRangesJson === 'null' ? '' : $routeRangesJson }}">
+    <input type="hidden" name="route_schedule" value="{{ $routeScheduleJson === 'null' ? '' : $routeScheduleJson }}">
+
+    {{-- 1. Por viajes (default) --}}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div class="radio" style="margin:0;">
+            <input type="radio" name="route_color_type" value="trips" id="rct_trips" @if($routeColorType == 'trips') checked @endif>
+            <label for="rct_trips">Por viajes</label>
+        </div>
+    </div>
+
+    {{-- 2. Único --}}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div class="radio" style="margin:0;">
+            <input type="radio" name="route_color_type" value="single" id="rct_single" @if($routeColorType == 'single') checked @endif>
+            <label for="rct_single">Único</label>
+        </div>
+        <input type="color" name="route_color" id="rct_single_color" value="{{ $routeColor }}" style="width:36px;height:24px;padding:0;border:none;">
+    </div>
+
+    {{-- 3. Por velocidad --}}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <div class="radio" style="margin:0;">
+            <input type="radio" name="route_color_type" value="speed" id="rct_speed" @if($routeColorType == 'speed') checked @endif>
+            <label for="rct_speed">Por velocidad</label>
+        </div>
+        <div id="rct-speed-preview" style="flex:1;display:flex;height:10px;border-radius:2px;overflow:hidden;min-width:80px;"></div>
+        <button type="button" id="rct-speed-add" class="btn btn-xs btn-default" title="Añadir rango">+</button>
+        <button type="button" id="rct-speed-reset" class="btn btn-xs btn-default" title="Restaurar defaults">&#8634;</button>
+    </div>
+    <div id="rct-speed-rows" style="margin:0 0 6px 20px;"></div>
+
+    {{-- 4. Por sensor (placeholder deshabilitado) --}}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <div class="radio disabled" style="margin:0;">
+            <input type="radio" name="route_color_type" value="sensor" id="rct_sensor" disabled>
+            <label for="rct_sensor" style="color:#999;">Por sensor</label>
+        </div>
+        <small style="color:#999;">(requiere un sensor con rangos de colores por intervalo)</small>
+    </div>
+
+    {{-- 5. Por horario --}}
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+        <div class="radio" style="margin:0;">
+            <input type="radio" name="route_color_type" value="schedule" id="rct_schedule" @if($routeColorType == 'schedule') checked @endif>
+            <label for="rct_schedule">Por horario</label>
+        </div>
+        <span>Día de</span>
+        <input type="time" id="rct_day_from" class="form-control input-sm" style="width:90px;" value="06:00">
+        <span>a</span>
+        <input type="time" id="rct_day_to" class="form-control input-sm" style="width:90px;" value="18:00">
+        <input type="color" id="rct_day_color" value="#2563eb" title="Color diurno" style="width:36px;height:24px;padding:0;border:none;">
+        <input type="color" id="rct_night_color" value="#000000" title="Color nocturno" style="width:36px;height:24px;padding:0;border:none;">
+    </div>
+    <small style="margin-left:20px;color:#777;">La noche es el resto del día; el rango puede cruzar medianoche.</small>
+</div>
+
+<script>
+(function ($) {
+    var DEFAULT_RANGES = [
+        { from: 0, to: 40, color: '#22d3ee' },
+        { from: 40, to: 60, color: '#3b82f6' },
+        { from: 60, to: 90, color: '#6366f1' },
+        { from: 90, to: 120, color: '#a855f7' },
+        { from: 120, to: null, color: '#ef4444' }
+    ];
+    var DEFAULT_SCHEDULE = { day_from: '06:00', day_to: '18:00', day_color: '#2563eb', night_color: '#000000' };
+
+    var $wrap = $('#route-color-settings');
+    if (!$wrap.length) return;
+
+    var $hiddenRanges = $wrap.find('input[name="route_speed_ranges"]');
+    var $hiddenSchedule = $wrap.find('input[name="route_schedule"]');
+
+    function cloneRanges(src) {
+        return $.map(src, function (r) { return { from: r.from, to: r.to, color: r.color }; });
+    }
+
+    var initialRanges = {!! $routeRangesJson !!};
+    var ranges = ($.isArray(initialRanges) && initialRanges.length)
+        ? cloneRanges(initialRanges)
+        : cloneRanges(DEFAULT_RANGES);
+
+    var initialSchedule = {!! $routeScheduleJson !!};
+    var schedule = $.extend({}, DEFAULT_SCHEDULE, initialSchedule || {});
+
+    function normalize() {
+        ranges.sort(function (a, b) { return a.from - b.from; });
+
+        var from = 0;
+        for (var i = 0; i < ranges.length; i++) {
+            ranges[i].from = from;
+
+            if (i === ranges.length - 1) {
+                ranges[i].to = null;
+                break;
+            }
+
+            var to = parseFloat(ranges[i].to);
+            if (isNaN(to) || to <= ranges[i].from) to = ranges[i].from + 10;
+
+            ranges[i].to = to;
+            from = to;
+        }
+    }
+
+    function selectSpeed() { $('#rct_speed').prop('checked', true); }
+    function selectSchedule() { $('#rct_schedule').prop('checked', true); }
+
+    function render() {
+        normalize();
+        $hiddenRanges.val(JSON.stringify(ranges));
+
+        var scale = ranges.length > 1 ? ranges[ranges.length - 1].from : 100;
+
+        var $bar = $('#rct-speed-preview').empty();
+        $.each(ranges, function (i, r) {
+            var w = r.to === null ? 18 : Math.max(6, ((r.to - r.from) / scale) * 82);
+            $('<div/>').css({ width: w + '%', background: r.color }).appendTo($bar);
+        });
+
+        var $rows = $('#rct-speed-rows').empty();
+        $.each(ranges, function (i, r) {
+            var $row = $('<div/>').css({ display: 'flex', 'align-items': 'center', gap: '6px', margin: '2px 0' });
+
+            $('<input/>', { type: 'text', disabled: true, 'class': 'form-control input-sm', value: r.from })
+                .css('width', '70px').appendTo($row);
+
+            if (r.to === null) {
+                $('<span/>').text('∞').css({ width: '70px', 'text-align': 'center' }).appendTo($row);
+            } else {
+                $('<input/>', { type: 'number', 'class': 'form-control input-sm rct-to', 'data-i': i, value: r.to })
+                    .css('width', '70px').appendTo($row);
+            }
+
+            $('<input/>', { type: 'color', 'class': 'rct-color', 'data-i': i, value: r.color })
+                .css({ width: '36px', height: '24px', padding: 0, border: 'none' }).appendTo($row);
+
+            if (ranges.length > 1) {
+                $('<button/>', { type: 'button', 'class': 'btn btn-xs btn-default rct-del', 'data-i': i, html: '&times;' })
+                    .appendTo($row);
+            }
+
+            $row.appendTo($rows);
+        });
+    }
+
+    function renderSchedule() {
+        $('#rct_day_from').val(schedule.day_from);
+        $('#rct_day_to').val(schedule.day_to);
+        $('#rct_day_color').val(schedule.day_color);
+        $('#rct_night_color').val(schedule.night_color);
+        $hiddenSchedule.val(JSON.stringify(schedule));
+    }
+
+    $wrap.on('change', '.rct-to', function () {
+        ranges[$(this).data('i')].to = parseFloat($(this).val());
+        selectSpeed();
+        render();
+    });
+
+    $wrap.on('change', '.rct-color', function () {
+        ranges[$(this).data('i')].color = $(this).val();
+        selectSpeed();
+        render();
+    });
+
+    $wrap.on('click', '.rct-del', function () {
+        ranges.splice($(this).data('i'), 1);
+        selectSpeed();
+        render();
+    });
+
+    $('#rct-speed-add').on('click', function () {
+        var lastFrom = ranges[ranges.length - 1].from;
+        ranges.splice(ranges.length - 1, 0, { from: lastFrom, to: lastFrom + 20, color: '#94a3b8' });
+        selectSpeed();
+        render();
+    });
+
+    $('#rct-speed-reset').on('click', function () {
+        ranges = cloneRanges(DEFAULT_RANGES);
+        selectSpeed();
+        render();
+    });
+
+    $('#rct_day_from, #rct_day_to, #rct_day_color, #rct_night_color').on('change', function () {
+        schedule.day_from = $('#rct_day_from').val() || DEFAULT_SCHEDULE.day_from;
+        schedule.day_to = $('#rct_day_to').val() || DEFAULT_SCHEDULE.day_to;
+        schedule.day_color = $('#rct_day_color').val();
+        schedule.night_color = $('#rct_night_color').val();
+        selectSchedule();
+        renderSchedule();
+    });
+
+    render();
+    renderSchedule();
+})(jQuery);
+</script>

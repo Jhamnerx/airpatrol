@@ -273,15 +273,15 @@
 </div>
 
 @php
-    $routeColorType = in_array($item->route_color_type, ['trips', 'single', 'speed', 'schedule'])
+    $routeColorType = in_array($item->route_color_type, ['trips', 'single', 'speed', 'sensor', 'schedule'])
         ? $item->route_color_type
         : 'trips';
     $routeColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $item->route_color)
         ? $item->route_color
         : '#2563eb';
     // json_decode + json_encode: si el JSON guardado está corrupto, al JS llega null (usa defaults)
-    $routeRangesJson = json_encode(json_decode((string) $item->route_speed_ranges) ?: null);
-    $routeScheduleJson = json_encode(json_decode((string) $item->route_schedule) ?: null);
+    $routeRangesJson = json_encode(json_decode((string) $item->route_speed_ranges) ?: null, JSON_HEX_TAG);
+    $routeScheduleJson = json_encode(json_decode((string) $item->route_schedule) ?: null, JSON_HEX_TAG);
 @endphp
 
 <div class="form-group" id="route-color-settings">
@@ -323,7 +323,7 @@
     {{-- 4. Por sensor (placeholder deshabilitado) --}}
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
         <div class="radio disabled" style="margin:0;">
-            <input type="radio" name="route_color_type" value="sensor" id="rct_sensor" disabled>
+            <input type="radio" name="route_color_type" value="sensor" id="rct_sensor" disabled @if($routeColorType == 'sensor') checked @endif>
             <label for="rct_sensor" style="color:#999;">Por sensor</label>
         </div>
         <small style="color:#999;">(requiere un sensor con rangos de colores por intervalo)</small>
@@ -372,7 +372,7 @@
         : cloneRanges(DEFAULT_RANGES);
 
     var initialSchedule = {!! $routeScheduleJson !!};
-    var schedule = $.extend({}, DEFAULT_SCHEDULE, initialSchedule || {});
+    var schedule = $.extend({}, DEFAULT_SCHEDULE, $.isPlainObject(initialSchedule) ? initialSchedule : {});
 
     function normalize() {
         ranges.sort(function (a, b) { return a.from - b.from; });

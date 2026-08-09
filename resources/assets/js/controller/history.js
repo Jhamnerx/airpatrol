@@ -417,10 +417,11 @@ function History() {
     if (!$.isArray(ranges) || !ranges.length) return ROUTE_DEFAULT_RANGES;
 
     for (var i = 0; i < ranges.length; i++) {
-      if (typeof ranges[i].from !== "number" || !ranges[i].color) return ROUTE_DEFAULT_RANGES;
+      if (typeof ranges[i].from !== "number" || !/^#[0-9a-fA-F]{3,8}$/.test(ranges[i].color))
+        return ROUTE_DEFAULT_RANGES;
     }
 
-    return ranges;
+    return ranges.slice().sort(function (a, b) { return a.from - b.from; });
   };
 
   _this.routeSchedule = function () {
@@ -433,8 +434,8 @@ function History() {
     return {
       day_from: s.day_from,
       day_to: s.day_to,
-      day_color: s.day_color || ROUTE_DEFAULT_SCHEDULE.day_color,
-      night_color: s.night_color || ROUTE_DEFAULT_SCHEDULE.night_color,
+      day_color: /^#[0-9a-fA-F]{3,8}$/.test(s.day_color || "") ? s.day_color : ROUTE_DEFAULT_SCHEDULE.day_color,
+      night_color: /^#[0-9a-fA-F]{3,8}$/.test(s.night_color || "") ? s.night_color : ROUTE_DEFAULT_SCHEDULE.night_color,
     };
   };
 

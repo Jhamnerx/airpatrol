@@ -292,6 +292,8 @@ function History() {
 
     _this.routeLegendRemove();
 
+    $("#history-stats").empty();
+
     app.map.off("moveend", _this.polylinePointsCheck);
 
     if (typeof clear == "undefined") $("#ajax-history").html("");
@@ -537,6 +539,104 @@ function History() {
     }
   };
 
+  _this.statsRender = function () {
+    var $wrap = $("#history-stats");
+
+    if (!$wrap.length) return;
+
+    if (window.history_items == null) {
+      $wrap.empty();
+      return;
+    }
+
+    var moveMs = 0,
+      stopMs = 0,
+      maxSpeed = 0,
+      distanceRaw = 0;
+
+    $.each(window.history_items, function (index, item) {
+      if (typeof item.positions === "undefined") return;
+      if (item.status != 1 && item.status != 2) return;
+
+      var prev = null;
+
+      $.each(item.positions, function (pindex, position) {
+        if (!_this.routeFranjaHidden(position)) {
+          var spd = parseFloat(position.s) || 0;
+          if (spd > maxSpeed) maxSpeed = spd;
+
+          distanceRaw += parseFloat(position.d) || 0;
+        }
+
+        if (prev !== null && !_this.routeFranjaHidden(prev)) {
+          var a = moment(prev.t, "YYYY-MM-DD HH:mm:ss");
+          var b = moment(position.t, "YYYY-MM-DD HH:mm:ss");
+
+          if (a.isValid() && b.isValid()) {
+            var dt = b.diff(a);
+
+            if (dt > 0) {
+              if (item.status == 1) moveMs += dt;
+              else stopMs += dt;
+            }
+          }
+        }
+
+        prev = position;
+      });
+    });
+
+    var units = (app.settings && app.settings.units) || {};
+    var distUnit = (units.distance && units.distance.unit) || "km";
+    var distRatio = (units.distance && units.distance.radio) || 1;
+    var speedUnit = (units.speed && units.speed.unit) || "";
+
+    function fmtDur(ms) {
+      var mins = Math.floor(ms / 60000);
+
+      return Math.floor(mins / 60) + "h " + (mins % 60) + "m";
+    }
+
+    function card(value, label) {
+      return (
+        '<div style="flex:1;text-align:center;padding:4px 8px;background:#f8f9fa;border:1px solid #e3e6e8;border-radius:4px;margin:0 3px;">' +
+        '<div style="font-size:16px;font-weight:bold;line-height:1.2;">' + value + "</div>" +
+        '<div style="font-size:10px;color:#777;">' + label + "</div>" +
+        "</div>"
+      );
+    }
+
+    var html =
+      '<div style="display:flex;align-items:stretch;padding:4px 6px;">' +
+      card(fmtDur(moveMs), "En movimiento") +
+      card(fmtDur(stopMs), "Detenido") +
+      card(maxSpeed + " " + speedUnit, "Vel. máxima") +
+      card((distanceRaw * distRatio).toFixed(1) + " " + distUnit, "Recorrido");
+
+    if (_this.routeMode() === "schedule") {
+      html +=
+        '<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;font-size:12px;white-space:nowrap;">' +
+        '<label style="margin:0;font-weight:normal;cursor:pointer;"><input type="checkbox" id="franja-day"' +
+        (_this.franjaVisible.day ? " checked" : "") +
+        "> Día</label>" +
+        '<label style="margin:0;font-weight:normal;cursor:pointer;"><input type="checkbox" id="franja-night"' +
+        (_this.franjaVisible.night ? " checked" : "") +
+        "> Noche</label>" +
+        "</div>";
+    }
+
+    html += "</div>";
+
+    $wrap.html(html);
+
+    $wrap.find("#franja-day, #franja-night").on("change", function () {
+      _this.franjaVisible.day = $wrap.find("#franja-day").prop("checked");
+      _this.franjaVisible.night = $wrap.find("#franja-night").prop("checked");
+
+      _this.parse();
+    });
+  };
+
   _this.parse = function () {
     _this.clear("yes");
 
@@ -689,6 +789,8 @@ function History() {
       _this.polylines.addTo(app.map);
 
       _this.routeLegendAdd();
+
+      _this.statsRender();
 
       app.map.on("moveend", _this.polylinePointsCheck);
 

@@ -136,6 +136,8 @@ function History() {
   };
 
   _this.get = function () {
+    _this.franjaVisible = { day: true, night: true };
+
     var $container = $("#history_tab");
 
     $.ajax({
@@ -439,6 +441,24 @@ function History() {
     };
   };
 
+  _this.routeIsDay = function (position) {
+    var s = _this.routeSchedule();
+    var hm = (position.t || "").substr(11, 5); // position.t ya viene en la TZ del usuario
+
+    if (s.day_from <= s.day_to) return hm >= s.day_from && hm < s.day_to;
+
+    // rango que cruza medianoche, ej. 20:00 -> 06:00
+    return hm >= s.day_from || hm < s.day_to;
+  };
+
+  _this.franjaVisible = { day: true, night: true };
+
+  _this.routeFranjaHidden = function (position) {
+    if (_this.routeMode() !== "schedule") return false;
+
+    return _this.routeIsDay(position) ? !_this.franjaVisible.day : !_this.franjaVisible.night;
+  };
+
   _this.routeColorAt = function (mode, position, itemColor) {
     if (mode === "single") {
       return (window.history_route && window.history_route.color) || ROUTE_SINGLE_DEFAULT;
@@ -458,17 +478,8 @@ function History() {
 
     if (mode === "schedule") {
       var s = _this.routeSchedule();
-      var hm = (position.t || "").substr(11, 5); // position.t ya viene en la TZ del usuario
-      var day;
 
-      if (s.day_from <= s.day_to) {
-        day = hm >= s.day_from && hm < s.day_to;
-      } else {
-        // rango que cruza medianoche, ej. 20:00 -> 06:00
-        day = hm >= s.day_from || hm < s.day_to;
-      }
-
-      return day ? s.day_color : s.night_color;
+      return _this.routeIsDay(position) ? s.day_color : s.night_color;
     }
 
     // trips (y cualquier fallback): color por item; si no hay, el del backend

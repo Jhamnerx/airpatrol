@@ -336,6 +336,8 @@ function History() {
 
       if (_this.skipInvalid && !position.v) return;
 
+      if (position._hidden) return;
+
       point = app.map.project(position);
 
       if (!mapBounds.contains(position)) {
@@ -578,6 +580,21 @@ function History() {
               return;
             }
 
+            if (_this.routeFranjaHidden(position)) {
+              position._hidden = true;
+
+              if (poly != null && poly.getLatLngs().length > 1) {
+                polyArray.push(poly);
+              }
+
+              poly = null;
+              lastColor = null;
+
+              return;
+            }
+
+            position._hidden = false;
+
             let point = {
               lat: parseFloat(position.lat),
               lng: parseFloat(position.lng),
@@ -611,6 +628,8 @@ function History() {
 
         if (item.status == 2) {
           if (!app.settings.showHistoryStop) return;
+
+          if (item.positions && item.positions.length && _this.routeFranjaHidden(item.positions[0])) return;
 
           icon = _this.getParkingIcon(item);
         } else if (item.icon) {

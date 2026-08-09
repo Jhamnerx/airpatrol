@@ -248,12 +248,12 @@ En `$rules['create']` y en `$rules['update']`, después de `'fuel_detect_sec_aft
 ```php
             'fuel_detect_sec_after_stop' => 'nullable|numeric|min:60|max:300',
             'route_color_type'    => 'sometimes|in:trips,single,speed,sensor,schedule',
-            'route_color'         => 'sometimes|nullable|css_color',
+            'route_color'         => 'sometimes|nullable|regex:/^#[0-9a-fA-F]{6}$/',
             'route_speed_ranges'  => 'sometimes|nullable|string',
             'route_schedule'      => 'sometimes|nullable|string',
 ```
 
-(Nota: `css_color` es la regla custom que ya usa `tail_color`. Los JSON solo se validan como string: el frontend cae a defaults ante JSON corrupto, según el spec.)
+(Nota: hex estricto en vez de la regla custom `css_color` porque la columna es VARCHAR(10) y `css_color` admite valores más largos — rgba(), nombres CSS — que truncarían o fallarían en DB; el `<input type="color">` del editor solo emite `#rrggbb`. Los JSON solo se validan como string: el frontend cae a defaults ante JSON corrupto, según el spec.)
 
 - [ ] **Step 2: Verificación rápida de sintaxis**
 

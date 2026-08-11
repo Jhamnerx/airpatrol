@@ -136,6 +136,8 @@ function History() {
   };
 
   _this.get = function () {
+    _this.franjaVisible = { day: true, night: true };
+
     var $container = $("#history_tab");
 
     $.ajax({
@@ -288,6 +290,10 @@ function History() {
     _this.polylineDecorator = null;
     _this.polylinePoints.clearLayers();
 
+    _this.routeLegendRemove();
+
+    $("#history-stats").empty();
+
     app.map.off("moveend", _this.polylinePointsCheck);
 
     if (typeof clear == "undefined") $("#ajax-history").html("");
@@ -332,6 +338,8 @@ function History() {
 
       if (_this.skipInvalid && !position.v) return;
 
+      if (position._hidden) return;
+
       point = app.map.project(position);
 
       if (!mapBounds.contains(position)) {
@@ -372,6 +380,263 @@ function History() {
     _this.polylinePoints.addTo(app.map);
   };
 
+  // --- Colores del recorrido (config por vehículo, window.history_route) ---
+  var ROUTE_TRIP_PALETTE = [
+    "#2563eb", "#16a34a", "#0891b2", "#7c3aed", "#db2777",
+    "#ea580c", "#ca8a04", "#0d9488", "#9333ea", "#dc2626",
+  ];
+  var ROUTE_STOP_COLOR = "#94a3b8";
+  var ROUTE_SINGLE_DEFAULT = "#2563eb";
+  var ROUTE_DEFAULT_RANGES = [
+    { from: 0, to: 40, color: "#22d3ee" },
+    { from: 40, to: 60, color: "#3b82f6" },
+    { from: 60, to: 90, color: "#6366f1" },
+    { from: 90, to: 120, color: "#a855f7" },
+    { from: 120, to: null, color: "#ef4444" },
+  ];
+  var ROUTE_DEFAULT_SCHEDULE = {
+    day_from: "06:00",
+    day_to: "18:00",
+    day_color: "#2563eb",
+    night_color: "#000000",
+  };
+
+  _this.routeLegend = null;
+
+  _this.routeMode = function () {
+    var route = window.history_route || null;
+
+    if (!route || !route.type) return "trips";
+
+    // el modo sensor aún no existe: cae a speed
+    var type = route.type === "sensor" ? "speed" : route.type;
+
+    if (["trips", "single", "speed", "schedule"].indexOf(type) < 0) type = "trips";
+
+    return type;
+  };
+
+  _this.routeRanges = function () {
+    var route = window.history_route || {};
+    var ranges = route.ranges;
+
+    if (!$.isArray(ranges) || !ranges.length) return ROUTE_DEFAULT_RANGES;
+
+    for (var i = 0; i < ranges.length; i++) {
+      if (!ranges[i] || typeof ranges[i].from !== "number" || !/^#[0-9a-fA-F]{3,8}$/.test(ranges[i].color))
+        return ROUTE_DEFAULT_RANGES;
+    }
+
+    return ranges.slice().sort(function (a, b) { return a.from - b.from; });
+  };
+
+  _this.routeSchedule = function () {
+    var route = window.history_route || {};
+    var s = route.schedule;
+
+    if (!s || !/^\d\d:\d\d$/.test(s.day_from || "") || !/^\d\d:\d\d$/.test(s.day_to || ""))
+      return ROUTE_DEFAULT_SCHEDULE;
+
+    return {
+      day_from: s.day_from,
+      day_to: s.day_to,
+      day_color: /^#[0-9a-fA-F]{3,8}$/.test(s.day_color || "") ? s.day_color : ROUTE_DEFAULT_SCHEDULE.day_color,
+      night_color: /^#[0-9a-fA-F]{3,8}$/.test(s.night_color || "") ? s.night_color : ROUTE_DEFAULT_SCHEDULE.night_color,
+    };
+  };
+
+  _this.routeIsDay = function (position) {
+    var s = _this.routeSchedule();
+    var hm = (position.t || "").substr(11, 5); // position.t ya viene en la TZ del usuario
+
+    if (s.day_from <= s.day_to) return hm >= s.day_from && hm < s.day_to;
+
+    // rango que cruza medianoche, ej. 20:00 -> 06:00
+    return hm >= s.day_from || hm < s.day_to;
+  };
+
+  _this.franjaVisible = { day: true, night: true };
+
+  _this.routeFranjaHidden = function (position) {
+    if (_this.routeMode() !== "schedule") return false;
+
+    return _this.routeIsDay(position) ? !_this.franjaVisible.day : !_this.franjaVisible.night;
+  };
+
+  _this.routeColorAt = function (mode, position, itemColor) {
+    if (mode === "single") {
+      return (window.history_route && window.history_route.color) || ROUTE_SINGLE_DEFAULT;
+    }
+
+    if (mode === "speed") {
+      var spd = parseFloat(position.s) || 0;
+      var ranges = _this.routeRanges();
+
+      for (var i = 0; i < ranges.length; i++) {
+        if (ranges[i].to === null || typeof ranges[i].to === "undefined" || spd < ranges[i].to)
+          return ranges[i].color;
+      }
+
+      return ranges[ranges.length - 1].color;
+    }
+
+    if (mode === "schedule") {
+      var s = _this.routeSchedule();
+
+      return _this.routeIsDay(position) ? s.day_color : s.night_color;
+    }
+
+    // trips (y cualquier fallback): color por item; si no hay, el del backend
+    return itemColor || position.c;
+  };
+
+  _this.routeLegendAdd = function () {
+    _this.routeLegendRemove();
+
+    if (_this.routeMode() !== "speed") return;
+
+    var ranges = _this.routeRanges();
+    var scale = ranges.length > 1 ? ranges[ranges.length - 1].from : 100;
+    var bar = '<div style="display:flex;border-radius:2px;overflow:hidden;">';
+    var labels = '<div style="display:flex;font-size:10px;color:#333;">';
+
+    $.each(ranges, function (i, r) {
+      var w = r.to === null ? 18 : Math.max(6, ((r.to - r.from) / scale) * 82);
+
+      bar += '<div style="width:' + w + '%;height:8px;background:' + r.color + ';"></div>';
+      labels +=
+        '<div style="width:' + w + '%;">' + r.from +
+        (r.to === null ? '<span style="float:right;">&#8734;</span>' : "") +
+        "</div>";
+    });
+
+    bar += "</div>";
+    labels += "</div>";
+
+    var legend = L.control({ position: "bottomleft" });
+
+    legend.onAdd = function () {
+      var div = L.DomUtil.create("div", "history-route-legend");
+
+      div.style.background = "rgba(255,255,255,0.9)";
+      div.style.padding = "4px 8px";
+      div.style.borderRadius = "4px";
+      div.style.width = "220px";
+      div.style.boxShadow = "0 1px 4px rgba(0,0,0,0.3)";
+      div.innerHTML = bar + labels;
+
+      return div;
+    };
+
+    legend.addTo(app.map);
+    _this.routeLegend = legend;
+  };
+
+  _this.routeLegendRemove = function () {
+    if (_this.routeLegend) {
+      app.map.removeControl(_this.routeLegend);
+      _this.routeLegend = null;
+    }
+  };
+
+  _this.statsRender = function () {
+    var $wrap = $("#history-stats");
+
+    if (!$wrap.length) return;
+
+    if (window.history_items == null) {
+      $wrap.empty();
+      return;
+    }
+
+    var moveMs = 0,
+      stopMs = 0,
+      maxSpeed = 0,
+      distanceRaw = 0;
+
+    $.each(window.history_items, function (index, item) {
+      if (typeof item.positions === "undefined") return;
+      if (item.status != 1 && item.status != 2) return;
+
+      var prev = null;
+
+      $.each(item.positions, function (pindex, position) {
+        if (!_this.routeFranjaHidden(position)) {
+          var spd = parseFloat(position.s) || 0;
+          if (spd > maxSpeed) maxSpeed = spd;
+
+          distanceRaw += parseFloat(position.d) || 0;
+        }
+
+        if (prev !== null && !_this.routeFranjaHidden(prev)) {
+          var a = moment(prev.t, "YYYY-MM-DD HH:mm:ss");
+          var b = moment(position.t, "YYYY-MM-DD HH:mm:ss");
+
+          if (a.isValid() && b.isValid()) {
+            var dt = b.diff(a);
+
+            if (dt > 0) {
+              if (item.status == 1) moveMs += dt;
+              else stopMs += dt;
+            }
+          }
+        }
+
+        prev = position;
+      });
+    });
+
+    var units = (app.settings && app.settings.units) || {};
+    var distUnit = (units.distance && units.distance.unit) || "km";
+    var distRatio = (units.distance && units.distance.radio) || 1;
+    var speedUnit = (units.speed && units.speed.unit) || "";
+
+    function fmtDur(ms) {
+      var mins = Math.floor(ms / 60000);
+
+      return Math.floor(mins / 60) + "h " + (mins % 60) + "m";
+    }
+
+    function card(value, label) {
+      return (
+        '<div style="flex:1;text-align:center;padding:4px 8px;background:#f8f9fa;border:1px solid #e3e6e8;border-radius:4px;margin:0 3px;">' +
+        '<div style="font-size:16px;font-weight:bold;line-height:1.2;">' + value + "</div>" +
+        '<div style="font-size:10px;color:#777;">' + label + "</div>" +
+        "</div>"
+      );
+    }
+
+    var html =
+      '<div style="display:flex;align-items:stretch;padding:4px 6px;">' +
+      card(fmtDur(moveMs), "En movimiento") +
+      card(fmtDur(stopMs), "Detenido") +
+      card(maxSpeed + " " + speedUnit, "Vel. máxima") +
+      card((distanceRaw * distRatio).toFixed(1) + " " + distUnit, "Recorrido");
+
+    if (_this.routeMode() === "schedule") {
+      html +=
+        '<div style="display:flex;flex-direction:column;justify-content:center;padding:0 8px;font-size:12px;white-space:nowrap;">' +
+        '<label style="margin:0;font-weight:normal;cursor:pointer;"><input type="checkbox" id="franja-day"' +
+        (_this.franjaVisible.day ? " checked" : "") +
+        "> Día</label>" +
+        '<label style="margin:0;font-weight:normal;cursor:pointer;"><input type="checkbox" id="franja-night"' +
+        (_this.franjaVisible.night ? " checked" : "") +
+        "> Noche</label>" +
+        "</div>";
+    }
+
+    html += "</div>";
+
+    $wrap.html(html);
+
+    $wrap.find("#franja-day, #franja-night").on("change", function () {
+      _this.franjaVisible.day = $wrap.find("#franja-day").prop("checked");
+      _this.franjaVisible.night = $wrap.find("#franja-night").prop("checked");
+
+      _this.parse();
+    });
+  };
+
   _this.parse = function () {
     _this.clear("yes");
 
@@ -392,7 +657,21 @@ function History() {
         lastDrive = null,
         lastStop = null;
 
+      var routeMode = _this.routeMode(),
+        routeDriveCount = 0;
+
       $.each(window.history_items, function (index, item) {
+        var itemColor = null;
+
+        if (routeMode === "trips" && typeof item.positions !== "undefined") {
+          if (item.status == 1) {
+            itemColor = ROUTE_TRIP_PALETTE[routeDriveCount % ROUTE_TRIP_PALETTE.length];
+            routeDriveCount++;
+          } else {
+            itemColor = ROUTE_STOP_COLOR;
+          }
+        }
+
         if (typeof item.positions !== "undefined") {
           $.each(item.positions, function (pindex, position) {
             _this.positions.push(position);
@@ -401,10 +680,27 @@ function History() {
               return;
             }
 
+            if (_this.routeFranjaHidden(position)) {
+              position._hidden = true;
+
+              if (poly != null && poly.getLatLngs().length > 1) {
+                polyArray.push(poly);
+              }
+
+              poly = null;
+              lastColor = null;
+
+              return;
+            }
+
+            position._hidden = false;
+
             let point = {
               lat: parseFloat(position.lat),
               lng: parseFloat(position.lng),
             };
+
+            position.c = _this.routeColorAt(routeMode, position, itemColor);
 
             if (poly != null && lastColor !== position.c) {
               poly.addLatLng(point);
@@ -432,6 +728,8 @@ function History() {
 
         if (item.status == 2) {
           if (!app.settings.showHistoryStop) return;
+
+          if (item.positions && item.positions.length && _this.routeFranjaHidden(item.positions[0])) return;
 
           icon = _this.getParkingIcon(item);
         } else if (item.icon) {
@@ -489,6 +787,10 @@ function History() {
       _this.markers = markers;
       _this.polylines = polylines;
       _this.polylines.addTo(app.map);
+
+      _this.routeLegendAdd();
+
+      _this.statsRender();
 
       app.map.on("moveend", _this.polylinePointsCheck);
 

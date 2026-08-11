@@ -48,6 +48,7 @@
     <script>
         window.history_items = {!!json_encode($items)!!};
         window.history_sensors = {!!json_encode($sensors)!!};
+        window.history_route = {!! json_encode($route ?? null, JSON_HEX_TAG) !!};
         initComponents($('.history'));
     </script>
 @else
@@ -56,5 +57,6 @@
     <script>
         window.history_items = null;
         window.history_sensors = null;
+        window.history_route = null;
     </script>
 @endif

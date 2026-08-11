@@ -32,7 +32,12 @@ class DeviceFormValidator extends Validator
             'forward.protocol'    => 'required_if:forward.active,1|in:TCP,UDP',
             'msisdn'              => 'sometimes|regex:/^\d{6,20}$/',
             'lbs'                 => 'nullable|boolean',
-            'fuel_detect_sec_after_stop' => 'nullable|numeric|min:60|max:300'
+            'fuel_detect_sec_after_stop' => 'nullable|numeric|min:60|max:300',
+            'route_color_type'    => 'sometimes|in:trips,single,speed,sensor,schedule',
+            'route_color'         => 'sometimes|nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'route_speed_ranges'  => 'sometimes|nullable|string',
+            'route_schedule'      => 'sometimes|nullable|string',
+            'route_sensor_id'     => 'sometimes|nullable|integer',
         ],
         'update' => [
             'imei'                => 'sometimes|required|unique:devices,imei,%s',
@@ -56,7 +61,12 @@ class DeviceFormValidator extends Validator
             'forward.protocol'    => 'required_if:forward.active,1|in:TCP,UDP',
             'msisdn'              => 'sometimes|regex:/^\d{6,20}$/',
             'lbs'                 => 'nullable|boolean',
-            'fuel_detect_sec_after_stop' => 'nullable|numeric|min:60|max:300'
+            'fuel_detect_sec_after_stop' => 'nullable|numeric|min:60|max:300',
+            'route_color_type'    => 'sometimes|in:trips,single,speed,sensor,schedule',
+            'route_color'         => 'sometimes|nullable|regex:/^#[0-9a-fA-F]{6}$/',
+            'route_speed_ranges'  => 'sometimes|nullable|string',
+            'route_schedule'      => 'sometimes|nullable|string',
+            'route_sensor_id'     => 'sometimes|nullable|integer',
         ],
     ];
 

@@ -1,4 +1,5 @@
 <div class="footer-table" id="bottom-history">
+    <div id="history-stats"></div>
     <div class="bottom-history-header">
         <ul class="nav nav-tabs pull-right" role="tablist">
             <li role="presentation" class="active">

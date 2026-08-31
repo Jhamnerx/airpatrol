@@ -23,7 +23,7 @@
     "gulp-purifycss": "^0.2.0",
     "gulp-sass": "^5.1.0",
     "gulp-sourcemaps": "^2.6.0",
-    "node-sass": "^7.0.3",
+    "sass": "~1.32.13",
     "vinyl": "^3.0.0"
   }
 }

@@ -1,10 +1,12 @@
-@import "../colouring/main-blue";
-@import "../colouring/base-ligth";
+// ===================================================================
+// Mapa embebido en reportes AirPatrol
+// ===================================================================
+@import "../colouring/main-airpatrol";
+@import "../colouring/base-airpatrol";
 @import "../layout/variables";
 @import "../libraries/bootstrap/variables";
 @import "../mixins/index";
 @import "../libraries/bootstrap/mixins";
 @import "../libraries/bootstrap-checkbox-mixins";
-//@import "../layout/dropdown";
 
 @import '../libraries/leaflet/leaflet';

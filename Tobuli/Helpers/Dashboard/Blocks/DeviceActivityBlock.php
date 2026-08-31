@@ -22,12 +22,12 @@ class DeviceActivityBlock extends Block
                 [
                     'label' => trans('global.online'),
                     'data'  => round($this->calcPercentage($all, $online), 1),
-                    'color' => '#52BE80',
+                    'color' => '#16A34A',
                 ],
                 [
                     'label' => trans('global.offline'),
                     'data'  => round($this->calcPercentage($all, $offline), 1),
-                    'color' => '#FF6363',
+                    'color' => '#94A3B8',
                 ],
             ]
         ];

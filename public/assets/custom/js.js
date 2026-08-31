@@ -1,3 +1,7 @@
+// Tema AirPatrol: el rediseño vive en el SCSS compilado (airpatrol.css /
+// airpatrol-dark.css); este skin inyectado solo aplica a los temas legacy.
+var __apThemeActive = !!document.querySelector('link[href*="airpatrol"]');
+
 var styleSheet = document.createElement("style");
 styleSheet.type = "text/css";
 styleSheet.innerText = `:root .black {
@@ -2555,7 +2559,9 @@ border-radius: 50%;
 
 `;
 
-document.head.appendChild(styleSheet);
+if (!__apThemeActive) {
+  document.head.appendChild(styleSheet);
+}
 
 function decodeHtmlEntities(encodedString) {
   const matches = encodedString.match(/&#(\d+);/g);
@@ -2586,11 +2592,13 @@ const themes = {
   "-win10-blue.css": "win10",
 };
 
-for (let i = 0; i < linkElements.length; i++) {
-  const href = linkElements[i].getAttribute("href");
-  for (const key in themes) {
-    if (href.indexOf(key) !== -1) {
-      bodyElement.classList.add(themes[key]);
+if (!__apThemeActive) {
+  for (let i = 0; i < linkElements.length; i++) {
+    const href = linkElements[i].getAttribute("href");
+    for (const key in themes) {
+      if (href.indexOf(key) !== -1) {
+        bodyElement.classList.add(themes[key]);
+      }
     }
   }
 }

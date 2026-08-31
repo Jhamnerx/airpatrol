@@ -1,0 +1,28 @@
+// ===================================================================
+// AirPatrol — marca y semántica de estados
+// Evolución de la identidad existente: navy #052062 + cian #1B99BD.
+// El primario se oscurece para cumplir contraste AA sobre blanco.
+// ===================================================================
+
+$brand-primary:          #0973A0;
+$brand-success:          #16A34A;
+$brand-info:             #2563EB;
+$brand-warning:          #F59E0B;
+$brand-danger:           #DC2626;
+
+// Marca
+$ap-navy:                #052062;
+$ap-accent:              #22C3EF;
+$ap-primary-hover:       #085E85;
+$ap-primary-active:      #064D6E;
+
+// Estados de flota (el rojo se reserva para alertas)
+$ap-status-moving:       #16A34A;   // en movimiento (hoy: green)
+$ap-status-engine:       #2563EB;   // motor encendido (hoy: blue)
+$ap-status-stopped:      #F59E0B;   // detenido / ralentí (hoy: yellow)
+$ap-status-offline:      #94A3B8;   // sin conexión (hoy: red)
+$ap-status-alert:        #DC2626;   // solo eventos que exigen acción
+
+// Historial: tramos de recorrido
+$ap-track-day:           #2563EB;
+$ap-track-night:         #7C5CFC;

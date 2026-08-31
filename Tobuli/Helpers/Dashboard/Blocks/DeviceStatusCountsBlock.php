@@ -18,26 +18,31 @@ class DeviceStatusCountsBlock extends Block
         return [
             'statuses' => [
                 [
+                    'key'   => 'total',
                     'label' => trans('front.count'),
                     'data' => $this->user->devices()->count(),
                     'url'  => DevicesLookupTable::route('index')
                 ],
                 [
+                    'key'   => 'online',
                     'label' => trans('global.online'),
                     'data' => $this->user->devices()->online()->count(),
                     'url'  => DevicesOnlineLookupTable::route('index')
                 ],
                 [
+                    'key'   => 'offline',
                     'label' => trans('front.offline'),
                     'data' => $this->user->devices()->offline()->count(),
                     'url'  => DevicesOfflineLookupTable::route('index')
                 ],
                 [
+                    'key'   => 'never-connected',
                     'label' => trans('front.never_connected'),
                     'data' => $this->user->devices()->neverConnected()->count(),
                     'url' => DevicesNeverConnectedLookupTable::route('index')
                 ],
                 [
+                    'key'   => 'expired',
                     'label' => trans('front.expired'),
                     'data' => $this->user->devices()->expired()->count(),
                     'url' => DevicesExpiredLookupTable::route('index')

@@ -1,18 +1,13 @@
-<table class="table">
-    <tbody>
+<ul class="ap-kpi-list">
     @foreach($statuses as $status)
-        <tr>
-            <td class="text-left">{{ $status['label'] }}</td>
-            <td class="text-right link">
-                @if(empty($status['url']))
-                    <b>{{ $status['data'] }}</b>
-                @else
-                    <a href="{{ $status['url'] }}" target="_blank">
-                        <b>{{ $status['data'] }}</b>
-                    </a>
-                @endif
-            </td>
-        </tr>
+        <li class="ap-kpi ap-kpi--{{ $status['key'] ?? 'default' }}">
+            <span class="ap-kpi-dot" aria-hidden="true"></span>
+            <span class="ap-kpi-label">{{ $status['label'] }}</span>
+            @if(empty($status['url']))
+                <b class="ap-kpi-value">{{ $status['data'] }}</b>
+            @else
+                <a class="ap-kpi-value" href="{{ $status['url'] }}" target="_blank">{{ $status['data'] }}</a>
+            @endif
+        </li>
     @endforeach
-</table>
-
+</ul>

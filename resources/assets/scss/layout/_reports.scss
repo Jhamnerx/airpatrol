@@ -1,6 +1,6 @@
 .reports {
   background-color: #ffffff;
-  color: #787878;
+  color: $color-text-400;
   font-size: 12px;
 
   header {
@@ -76,13 +76,13 @@
     right: 7px;
 
     .btn {
-      border-color: #AAAAAA; }
+      border-color: $color-border-100; }
 
     a {
-      color: #AAAAAA;
+      color: $color-text-600;
 
       &:hover {
-        color: #1C98BC; }
+        color: $brand-primary; }
     }
   }
 }
@@ -90,7 +90,7 @@
 
 $table-cell-padding: 4px;
 $table-condensed-cell-padding: 3px 5px;
-$table-border-color: #dddddd;
+$table-border-color: $color-border-100;
 //
 // Tables
 // --------------------------------------------------
@@ -154,7 +154,8 @@ th {
     > tr {
       > th,
       > td {
-        background-color: #EEE;
+        background-color: $color-bg-200;
+        color: $color-text-300;
       }
     }
   }
@@ -177,8 +178,8 @@ th {
 
   &.table-hover {
     > tbody tr:hover td {
-      background-color: #1A99BC;
-      color: #FFF; }
+      background-color: rgba($brand-primary, 0.1);
+      color: inherit; }
   }
 
   &.table-bordered {
@@ -218,8 +219,8 @@ table th[class*="col-"] {
 //
 // Panels
 // --------------------------------------------------
-$panel-default-border: #dddddd;
-$panel-default-text: #333333;
+$panel-default-border: $color-border-100;
+$panel-default-text: $color-text-200;
 $panel-default-heading-bg: #ffffff;
 // Base class
 .panel {

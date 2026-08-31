@@ -1,5 +1,14 @@
-@import "../colouring/main-blue";
-@import "../colouring/base-ligth";
+// ===================================================================
+// Reportes AirPatrol (HTML imprimible / email)
+// Sin webfonts externas: los reportes se inyectan inline y pueden
+// enviarse por correo — se usa stack de sistema.
+// ===================================================================
+$font-family-sans-serif: "Segoe UI", system-ui, -apple-system, Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+$ap-font-mono: ui-monospace, "Cascadia Mono", Consolas, "Courier New", monospace;
+
+@import "../colouring/main-airpatrol";
+@import "../colouring/base-airpatrol";
 
 @import "../libraries/bootstrap/variables";
 @import "../libraries/bootstrap/mixins";

@@ -586,6 +586,8 @@ return [
     ],
 
     'template_colors' => [
+        'airpatrol'         => 'AirPatrol',
+        'airpatrol-dark'    => 'AirPatrol Nocturno',
         'light-blue'        => 'Light Blue',
         'light-green'       => 'Light Green',
         'light-red'         => 'Light Red',

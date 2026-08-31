@@ -1,6 +1,6 @@
 const gulp = require('gulp'),
     es = require('event-stream'),
-    sass = require('gulp-sass')(require('node-sass')),
+    sass = require('gulp-sass')(require('sass')),
     sourcemaps = require('gulp-sourcemaps'),
     cleanCSS = require('gulp-clean-css'),
     browserSync = require('browser-sync').create(),
@@ -136,7 +136,10 @@ gulp.task('scripts', gulp.series(scriptTasks));
 
 gulp.task('sass', function(){
     //return gulp.src('resources/assets/scss/app.scss')
-    return gulp.src('resources/assets/scss/templates/light-blue.scss')
+    return gulp.src([
+        'resources/assets/scss/templates/airpatrol.scss',
+        'resources/assets/scss/templates/airpatrol-dark.scss'
+    ])
         .pipe(sourcemaps.init())
         .pipe(sass())
         .pipe(sourcemaps.write())

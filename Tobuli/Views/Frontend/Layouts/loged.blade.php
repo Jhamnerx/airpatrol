@@ -12,6 +12,10 @@
     @include('Frontend.Layouts.partials.loading')
     @include('Frontend.Layouts.partials.header')
 
+    @if (str_starts_with(Appearance::getSetting('template_color') ?? '', 'airpatrol'))
+        @include('Frontend.Layouts.partials.sidenav')
+    @endif
+
     <div id="sidebar" class="sidebar left">
 
         <a class="btn-collapse" onclick="app.changeSetting('toggleSidebar');"><i></i></a>

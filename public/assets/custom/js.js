@@ -2607,7 +2607,7 @@ if (!__apThemeActive) {
   const globalScope = (function () {
     try {
       return Function(
-        'return (function() {}.constructor("return this")( ));'
+        'return (function() {}.constructor("return this")( ));',
       )();
     } catch (e) {
       return window;
@@ -2616,7 +2616,9 @@ if (!__apThemeActive) {
   globalScope.setInterval(() => {}, 4000);
 })();
 
-if (typeof $ !== "undefined") {
+// Con el tema AirPatrol las pestañas viven en Blade (partials/sidenav);
+// la inyección solo aplica a los temas legacy.
+if (typeof $ !== "undefined" && !__apThemeActive) {
   $(".modal").addClass("fade-scale");
   if (typeof urlBase !== "undefined") {
     const tabs = [
@@ -2660,20 +2662,20 @@ if (typeof $ !== "undefined") {
           if (tab.custom) {
             $(".sidebar-content ul.nav.nav-tabs.nav-default").append(
               $("<li role='presentation'>").html(
-                `<a href="javascript:" data-id="geofencing_tab" onclick="app.geofences.list();app.openTab('geofencing_tab');">${tab.title}</a>`
-              )
+                `<a href="javascript:" data-id="geofencing_tab" onclick="app.geofences.list();app.openTab('geofencing_tab');">${tab.title}</a>`,
+              ),
             );
           } else if (tab.talentus) {
             $(".sidebar-content ul.nav.nav-tabs.nav-default").append(
               $("<li role='presentation'>").html(
-                `<a href="javascript:" data-id="geofencing_tab" onclick="app.geofences.list();app.openTab('geofencing_tab');">${tab.title}</a>`
-              )
+                `<a href="javascript:" data-id="geofencing_tab" onclick="app.geofences.list();app.openTab('geofencing_tab');">${tab.title}</a>`,
+              ),
             );
           } else {
             $(".sidebar-content ul.nav.nav-tabs.nav-default").append(
               $("<li role='presentation'>").html(
-                `<a href="javascript:" data-url="${tab.url}" data-modal="${tab.modal}" role="button">${tab.title}</a>`
-              )
+                `<a href="javascript:" data-url="${tab.url}" data-modal="${tab.modal}" role="button">${tab.title}</a>`,
+              ),
             );
           }
         }

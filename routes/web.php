@@ -486,6 +486,16 @@ Route::group(['middleware' => ['auth', 'active_subscription'], 'namespace' => 'F
     Route::get('chat/{chatId}', ['as' => 'chat.get', 'uses' =>  'ChatController@getChat']);
     Route::post('chat/{chatId}', ['as' => 'chat.message', 'uses' => 'ChatController@createMessage']);
 
+    # AirBot (asistente IA)
+    Route::group(['prefix' => 'ai', 'as' => 'ai.', 'middleware' => ['ai_assistant']], function () {
+        Route::get('suggestions', ['as' => 'suggestions', 'uses' => 'AiAssistantController@suggestions']);
+        Route::get('conversations', ['as' => 'conversations', 'uses' => 'AiAssistantController@conversations']);
+        Route::get('conversations/{id}', ['as' => 'conversations.show', 'uses' => 'AiAssistantController@show']);
+        Route::delete('conversations/{id}', ['as' => 'conversations.destroy', 'uses' => 'AiAssistantController@destroy']);
+        Route::post('chat', ['as' => 'chat', 'uses' => 'AiAssistantController@chat'])
+            ->middleware('throttle:20,1');
+    });
+
     # Dashboard
     Route::get('dashboard', ['as' => 'dashboard', 'uses' => 'DashboardController@index']);
     Route::get('dashboard/block_content', ['as' => 'dashboard.block_content', 'uses' => 'DashboardController@blockContent']);

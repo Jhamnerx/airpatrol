@@ -113,6 +113,13 @@ return [
             'edit'  => 1,
             'remove'  => 0,
         ],
+        // AirBot: asistente IA. Los valores indican que modos existen;
+        // el acceso real se concede por usuario/plan (por defecto apagado).
+        'ai_assistant' => [
+            'view'  => 1,
+            'edit'  => 0,
+            'remove'  => 0,
+        ],
         'media_categories' => [
             'view'  => 1,
             'edit'  => 1,

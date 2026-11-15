@@ -40,6 +40,7 @@ class Kernel extends ConsoleKernel
         'App\Console\Commands\CleanExpiredSharingsCommand',
         'App\Console\Commands\CleanModelCommand',
         'App\Console\Commands\ReportsDailyCommand',
+        'App\Console\Commands\AiAlertsDigestCommand',
         'App\Console\Commands\SendEventsCommand',
         'App\Console\Commands\ReportsCleanCommand',
         'App\Console\Commands\ServerTranslationsCommand',
@@ -134,6 +135,12 @@ class Kernel extends ConsoleKernel
         $schedule
             ->command('server:check')
             ->daily();
+
+        // AirBot: resumen diario de alertas (solo si AI_ALERTS_DIGEST=true)
+        $schedule
+            ->command('ai:alerts-digest')
+            ->dailyAt('07:00')
+            ->withoutOverlapping();
 
         $schedule
             ->command('sharing:clean')

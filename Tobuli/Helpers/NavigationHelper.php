@@ -363,6 +363,14 @@ function getNavigation() {
         'childs' => ''
     ];
 
+    if (Auth::User()->isAdmin()) {
+        $childs[] = [
+            'title' =>  '<span class="text">AirBot (IA)</span>',
+            'route' => 'admin.ai_assistant.index',
+            'childs' => ''
+        ];
+    }
+
     $items[] = [
         'title' => '<i class="icon logs"></i>' . '<span class="text">' . trans('admin.logs') . '</span>',
         'route' => '',

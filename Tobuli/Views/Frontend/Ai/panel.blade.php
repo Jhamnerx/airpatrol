@@ -14,6 +14,8 @@
     data-url-chat="{{ route('ai.chat') }}"
     data-url-suggestions="{{ route('ai.suggestions') }}"
     data-url-conversations="{{ route('ai.conversations') }}"
+    data-url-confirm="{{ route('ai.actions.confirm', '__TOKEN__') }}"
+    data-url-cancel="{{ route('ai.actions.cancel', '__TOKEN__') }}"
     data-csrf="{{ csrf_token() }}"
     data-i18n="{{ json_encode([
         'thinking' => trans('front.ai_thinking'),

@@ -55,6 +55,15 @@ class AiHistoryReport extends DeviceHistoryReport
         });
     }
 
+    /**
+     * Valores legibles de un grupo con el mismo formato que el reporte oficial
+     * (por ejemplo fuel_level_difference, group_geofence, drivers).
+     */
+    public function groupData($group, array $keys): array
+    {
+        return $this->getDataFromGroup($group, $keys);
+    }
+
     /** Direccion de una posicion (geocodificacion del sistema). */
     public function address($position): ?string
     {

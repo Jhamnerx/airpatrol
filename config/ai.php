@@ -38,6 +38,17 @@ return [
     'max_devices'      => (int) env('AI_MAX_DEVICES', 100),
     'history_messages' => 40,    // mensajes de la conversacion que se reenvian
 
+    // Modelo para tareas simples y masivas (resumenes automaticos).
+    'light_model' => env('AI_LIGHT_MODEL', 'claude-haiku-5-5'),
+
+    // Funciones fuera del chat (todas requieren el permiso ai_assistant).
+    'features' => [
+        'explain_report' => env('AI_EXPLAIN_REPORT', true),   // boton en reportes HTML
+        'report_email'   => env('AI_REPORT_EMAIL', true),     // resumen en reportes programados
+        'dashboard'      => env('AI_DASHBOARD', true),        // bloque "Resumen AirBot"
+        'alerts_digest'  => env('AI_ALERTS_DIGEST', false),   // correo diario (apagado: escribe a clientes)
+    ],
+
     // Cuotas.
     'monthly_questions_per_user' => (int) env('AI_MONTHLY_QUESTIONS', 100), // 0 = sin limite
     'monthly_budget_usd'         => (float) env('AI_MONTHLY_BUDGET_USD', 0), // 0 = sin tope

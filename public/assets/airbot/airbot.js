@@ -14,6 +14,8 @@
     chat: root.getAttribute('data-url-chat'),
     suggestions: root.getAttribute('data-url-suggestions'),
     conversations: root.getAttribute('data-url-conversations'),
+    confirm: root.getAttribute('data-url-confirm'),
+    cancel: root.getAttribute('data-url-cancel'),
     csrf: root.getAttribute('data-csrf'),
     i18n: {}
   };
@@ -203,11 +205,113 @@
     if (window.app && typeof window.app.openTab === 'function') window.app.openTab(tab);
   }
 
-  function runAction(action) {
-    if (action && action.type === 'screen' && SCREENS[action.screen]) {
-      SCREENS[action.screen]();
-      if (window.innerWidth < 768) close();
+  function runAction(action, button) {
+    if (!action) return;
+
+    switch (action.type) {
+      case 'screen':
+        if (SCREENS[action.screen]) { SCREENS[action.screen](); if (window.innerWidth < 768) close(); }
+        break;
+
+      case 'download':
+        window.location.href = action.url;
+        break;
+
+      case 'history_export':
+        if (button) button.disabled = true;
+        request('GET', action.url).then(function (data) {
+          if (data.download) window.location.href = data.download;
+          else alert(data.error || t('error'));
+        }).catch(function (err) { alert(err.message); })
+          .then(function () { if (button) button.disabled = false; });
+        break;
+
+      case 'device':
+        clickFirst('a[href="#objects_tab"]');
+        if (window.app && window.app.devices && typeof window.app.devices.select === 'function') {
+          window.app.devices.select(action.device_id);
+        }
+        if (window.innerWidth < 768) close();
+        break;
+
+      case 'history':
+        showHistory(action.device_id, action.from, action.to);
+        if (window.innerWidth < 768) close();
+        break;
     }
+  }
+
+  /* Abre la pestana Historial con la unidad y el periodo (mismo flujo que app.history.device). */
+  function showHistory(deviceId, from, to) {
+    var $ = window.jQuery;
+    var history = window.app && window.app.history;
+    if (!$ || !history) return;
+
+    var round = function (hm) {
+      var p = hm.split(':');
+      var m = Math.floor(parseInt(p[1], 10) / 15) * 15;
+      return p[0] + ':' + (m < 10 ? '0' + m : m);
+    };
+    var form = $('#history-form');
+    var fd = from.slice(0, 10), td = to.slice(0, 10);
+
+    $('input[name="from_date"]', form).val(fd).datepicker && $('input[name="from_date"]', form).datepicker('setDate', new Date(fd + 'T00:00:00'));
+    $('input[name="to_date"]', form).val(td).datepicker && $('input[name="to_date"]', form).datepicker('setDate', new Date(td + 'T00:00:00'));
+    $('select[name="from_time"]', form).val(round(from.slice(11, 16))).trigger('change');
+    $('select[name="to_time"]', form).val(round(to.slice(11, 16))).trigger('change');
+
+    window.app.openTab('history_tab');
+
+    var select = $('select[name="device_id"]', form).val(deviceId);
+    if (select.selectpicker) {
+      select.selectpicker('setValWithAjax', deviceId, function () { history.get(); });
+    }
+    select.trigger('change');
+  }
+
+  /* Tarjeta de confirmacion: la accion solo se ejecuta si el usuario confirma. */
+  function confirmCard(action) {
+    var card = node('div', 'airbot-confirm');
+    card.appendChild(node('div', 'airbot-confirm-title', action.title));
+    var list = node('ul');
+    (action.details || []).forEach(function (d) { list.appendChild(node('li', null, d)); });
+    card.appendChild(list);
+
+    var buttons = node('div', 'airbot-confirm-buttons');
+    var ok = node('button', 'airbot-action', action.confirm || 'Confirmar');
+    var cancel = node('button', 'airbot-btn-secondary', 'Cancelar');
+    ok.type = cancel.type = 'button';
+    buttons.appendChild(ok);
+    buttons.appendChild(cancel);
+    card.appendChild(buttons);
+
+    var result = node('div', 'airbot-confirm-result');
+    card.appendChild(result);
+
+    function finish(url) {
+      ok.disabled = cancel.disabled = true;
+      result.textContent = t('thinking');
+      fetch(url.replace('__TOKEN__', encodeURIComponent(action.token)), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': cfg.csrf, 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ conversation_id: state.conversationId })
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (data) {
+          result.textContent = data.message || (r.ok ? 'Listo.' : t('error'));
+          card.classList.add(r.ok && data.status !== 'cancelled' ? 'is-done' : 'is-closed');
+        });
+      }).catch(function () {
+        result.textContent = t('error');
+        ok.disabled = cancel.disabled = false;
+      });
+      buttons.hidden = true;
+    }
+
+    ok.addEventListener('click', function () { finish(cfg.confirm); });
+    cancel.addEventListener('click', function () { finish(cfg.cancel); });
+
+    return card;
   }
 
   /* ---------------- Burbujas ---------------- */
@@ -273,10 +377,21 @@
         var first = sources.querySelector('li').textContent;
         sources.querySelector('summary').textContent = t('consulted') + ' ' + first + (count > 1 ? ' (+' + (count - 1) + ')' : '');
       },
-      addAction: function (action) {
+      addAction: function (action, fromHistory) {
+        if (action.type === 'confirm') {
+          // Una tarjeta del historial ya no se puede confirmar (vence a los 15 min).
+          if (fromHistory) {
+            var old = node('div', 'airbot-confirm is-closed');
+            old.appendChild(node('div', 'airbot-confirm-title', action.title));
+            actions.appendChild(old);
+          } else {
+            actions.appendChild(confirmCard(action));
+          }
+          return;
+        }
         var btn = node('button', 'airbot-action', action.label || 'Abrir');
         btn.type = 'button';
-        btn.addEventListener('click', function () { runAction(action); });
+        btn.addEventListener('click', function () { runAction(action, btn); });
         actions.appendChild(btn);
       },
       error: function (message) {
@@ -498,7 +613,7 @@
           var b = createBotBubble();
           (turn.sources || []).forEach(b.addSource);
           b.setText(turn.text || '');
-          (turn.actions || []).forEach(b.addAction);
+          (turn.actions || []).forEach(function (a) { b.addAction(a, true); });
           b.finish();
         }
       });

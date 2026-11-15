@@ -7,8 +7,11 @@ use App\Services\Ai\AgentException;
 use App\Services\Ai\AiAgent;
 use App\Services\Ai\AiQuota;
 use App\Services\Ai\ClaudeException;
+use App\Services\Ai\AiToolRegistry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Tobuli\Entities\AiActionLog;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tobuli\Entities\AiConversation;
 
@@ -169,6 +172,131 @@ class AiAssistantController extends Controller
             'Cache-Control' => 'no-cache, no-transform',
             'X-Accel-Buffering' => 'no',
             'Connection' => 'keep-alive',
+        ]);
+    }
+
+    /** "Explicar este reporte": resume el texto del reporte HTML que el usuario tiene abierto. */
+    public function explainReport(Request $request)
+    {
+        $this->validate($request, [
+            'title' => 'nullable|string|max:255',
+            'text' => 'required|string|max:200000',
+        ]);
+
+        $user = $request->user();
+
+        if (!\App\Services\Ai\AiFeatures::enabled($user, 'explain_report')) {
+            return response()->json(['message' => trans('front.ai_disabled')], 403);
+        }
+        if (AiQuota::budgetExceeded()) {
+            return response()->json(['message' => trans('front.ai_disabled')], 429);
+        }
+        if (AiQuota::remaining($user) === 0) {
+            return response()->json(['message' => trans('front.ai_quota_reached')], 429);
+        }
+
+        \Formatter::byUser($user);
+
+        try {
+            $text = \App\Services\Ai\AiFeatures::explainReport($user, (string) $request->input('title'), $request->input('text'));
+        } catch (\Throwable $e) {
+            Log::warning('AirBot explain error: ' . $e->getMessage());
+            return response()->json(['message' => trans('front.ai_error')], 502);
+        }
+
+        return response()->json([
+            'text' => $text !== '' ? $text : 'No puedo analizar este reporte.',
+            'remaining' => AiQuota::remaining($user),
+        ]);
+    }
+
+    /** Bloque "Resumen AirBot" del dashboard. */
+    public function dashboardSummary(Request $request)
+    {
+        $user = $request->user();
+
+        if (!\App\Services\Ai\AiFeatures::enabled($user, 'dashboard')) {
+            return response()->json(['message' => trans('front.ai_disabled')], 403);
+        }
+
+        try {
+            return response()->json(\App\Services\Ai\AiFeatures::dashboardSummary($user));
+        } catch (\Throwable $e) {
+            Log::warning('AirBot dashboard error: ' . $e->getMessage());
+            return response()->json(['message' => trans('front.ai_error')], 502);
+        }
+    }
+
+    /** Descarga de un reporte generado por exportar_reporte (solo su autor, 1 hora). */
+    public function download(Request $request, $token)
+    {
+        $file = Cache::get('airbot.download.' . $token);
+
+        if (!$file || (int) $file['user_id'] !== (int) $request->user()->id || !is_file($file['path'])) {
+            abort(404);
+        }
+
+        return response()->download($file['path'], $file['name']);
+    }
+
+    /** Ejecuta una accion preparada por AirBot despues de que el usuario confirma. */
+    public function confirm(Request $request, $token)
+    {
+        $pending = Cache::pull('airbot.pending.' . $token);
+        $user = $request->user();
+
+        if (!$pending || (int) $pending['user_id'] !== (int) $user->id) {
+            return response()->json(['message' => 'Esta acción ya no está disponible. Pídela de nuevo al asistente.'], 410);
+        }
+
+        /** @var \App\Services\Ai\Tools\Actions\ActionTool $class */
+        $class = $pending['class'];
+
+        if (!AiToolRegistry::canAct($user) || !$class::allowed($user, $pending['params'])) {
+            return response()->json(['message' => trans('front.dont_have_permission')], 403);
+        }
+
+        \Formatter::byUser($user);
+
+        try {
+            $message = $class::execute($user, $pending['params']);
+            $status = 'done';
+        } catch (\App\Services\Ai\ToolException $e) {
+            $message = $e->getMessage();
+            $status = 'failed';
+        } catch (\Throwable $e) {
+            Log::error('AirBot action error: ' . $e->getMessage(), ['action' => $pending['action']]);
+            $message = 'No se pudo completar la acción. Inténtalo desde la pantalla correspondiente.';
+            $status = 'failed';
+        }
+
+        $this->audit($request, $pending, $status, $message);
+
+        return response()->json(['status' => $status, 'message' => $message], $status === 'done' ? 200 : 422);
+    }
+
+    public function cancel(Request $request, $token)
+    {
+        $pending = Cache::pull('airbot.pending.' . $token);
+
+        if ($pending && (int) $pending['user_id'] === (int) $request->user()->id) {
+            $this->audit($request, $pending, 'cancelled', null);
+        }
+
+        return response()->json(['status' => 'cancelled', 'message' => 'Acción cancelada.']);
+    }
+
+    private function audit(Request $request, array $pending, string $status, ?string $result)
+    {
+        AiActionLog::create([
+            'user_id' => $request->user()->id,
+            'conversation_id' => $request->input('conversation_id'),
+            'action' => $pending['action'],
+            'title' => mb_substr($pending['title'], 0, 255),
+            'params' => $pending['params'],
+            'status' => $status,
+            'result' => $result,
+            'ip' => $request->ip(),
         ]);
     }
 

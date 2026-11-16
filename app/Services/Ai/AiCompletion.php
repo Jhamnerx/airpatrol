@@ -37,7 +37,8 @@ class AiCompletion
             'system' => [['type' => 'text', 'text' => $system]],
             'messages' => [['role' => 'user', 'content' => [['type' => 'text', 'text' => $content]]]],
             'output_config' => ['effort' => $effort],
-            'cache_control' => ['type' => 'ephemeral'],
+            // Sin cache: son llamadas unicas con contenido distinto cada vez, y el
+            // system es corto; cachear solo pagaria la escritura (1.25x) sin lecturas.
         ];
 
         // El fallback de servidor solo aplica a los modelos que lo soportan.

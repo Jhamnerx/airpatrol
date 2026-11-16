@@ -54,6 +54,51 @@
   function toggle() { root.hidden ? open() : close(); }
 
   launcher.addEventListener('click', open);
+
+  /* El lanzador se ubica encima de la barra de widgets del mapa cuando esta
+     visible y queda debajo del boton (por ejemplo, la ficha de la unidad). */
+  var LAUNCHER_GAP = 12;
+  var widgetsEl = document.getElementById('widgets');
+  var placeQueued = false;
+
+  function placeLauncher() {
+    placeQueued = false;
+    var bottom = '';
+    // offsetParent no sirve aqui: es null en elementos position:fixed.
+    if (widgetsEl && widgetsEl.getClientRects().length) {
+      var w = widgetsEl.getBoundingClientRect();
+      var l = launcher.getBoundingClientRect();
+      var overlapsX = w.right > l.left && w.left < l.right;
+      if (w.height > 0 && overlapsX && w.top < window.innerHeight) {
+        // Posicion por defecto del CSS (sin el ajuste en linea).
+        var current = launcher.style.bottom;
+        launcher.style.bottom = '';
+        var base = parseFloat(getComputedStyle(launcher).bottom) || 0;
+        launcher.style.bottom = current;
+        var needed = window.innerHeight - w.top + LAUNCHER_GAP;
+        if (needed > base) bottom = needed + 'px';
+      }
+    }
+    if (launcher.style.bottom !== bottom) launcher.style.bottom = bottom;
+  }
+
+  function queuePlace() {
+    if (placeQueued) return;
+    placeQueued = true;
+    setTimeout(placeLauncher, 30);
+  }
+
+  if (widgetsEl) {
+    if (window.ResizeObserver) new ResizeObserver(queuePlace).observe(widgetsEl);
+    if (window.MutationObserver) {
+      var mo = new MutationObserver(queuePlace);
+      mo.observe(widgetsEl, { attributes: true, attributeFilter: ['style', 'class'] });
+      mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+    widgetsEl.addEventListener('transitionend', queuePlace);
+    window.addEventListener('resize', queuePlace);
+    queuePlace();
+  }
   document.addEventListener('keydown', function (e) {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === 'b' || e.key === 'B')) {
       var t = e.target;

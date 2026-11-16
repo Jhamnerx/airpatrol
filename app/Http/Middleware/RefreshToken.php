@@ -21,7 +21,7 @@ class RefreshToken {
         $response = $next($request);
         
         if (!($response instanceof BinaryFileResponse))
-            $response->header('X-Refresh-Token', $token);
+            $response->headers->set('X-Refresh-Token', $token);
 
         return $response;
     }

@@ -21,6 +21,7 @@ return [
     // Modelo del chat y profundidad de razonamiento (low|medium|high|xhigh|max).
     'model'      => env('AI_MODEL', 'claude-sonnet-5-5'),
     'effort'     => env('AI_EFFORT', 'medium'),
+    'prefix_cache_ttl' => env('AI_PREFIX_CACHE_TTL', '1h'), // cache de tools+system: '1h' o '5m'
     'max_tokens' => (int) env('AI_MAX_TOKENS', 16000),
 
     // Reintento automatico en el servidor si el modelo rechaza una peticion
@@ -55,8 +56,8 @@ return [
 
     // Precios por millon de tokens (USD) para calcular el costo en ai_usage_logs.
     'pricing' => [
-        'claude-sonnet-5-5' => ['input' => 2.00, 'output' => 10.00, 'cache_read' => 0.10, 'cache_write' => 2.50],
-        'claude-haiku-5-5'  => ['input' => 0.10, 'output' => 0.50,  'cache_read' => 0.01, 'cache_write' => 0.125],
-        'claude-opus-5-5'   => ['input' => 4.00, 'output' => 20.00, 'cache_read' => 0.20, 'cache_write' => 5.00],
+        'claude-sonnet-5-5' => ['input' => 2.00, 'output' => 10.00, 'cache_read' => 0.10, 'cache_write' => 2.50, 'cache_write_1h' => 4.00],
+        'claude-haiku-5-5'  => ['input' => 0.10, 'output' => 0.50,  'cache_read' => 0.01, 'cache_write' => 0.125, 'cache_write_1h' => 0.20],
+        'claude-opus-5-5'   => ['input' => 4.00, 'output' => 20.00, 'cache_read' => 0.20, 'cache_write' => 5.00, 'cache_write_1h' => 8.00],
     ],
 ];

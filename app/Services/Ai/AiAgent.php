@@ -238,11 +238,18 @@ class AiAgent
         $body = [
             'model'         => $this->config['model'],
             'max_tokens'    => (int) $this->config['max_tokens'],
-            'system'        => [['type' => 'text', 'text' => SystemPrompt::text()]],
+            // Herramientas + system son iguales para todos los usuarios con el
+            // mismo permiso (~11-13k tokens): punto de cache explicito de 1 h,
+            // compartido entre conversaciones y usuarios.
+            'system'        => [[
+                'type' => 'text',
+                'text' => SystemPrompt::text(),
+                'cache_control' => ['type' => 'ephemeral', 'ttl' => $this->config['prefix_cache_ttl'] ?? '1h'],
+            ]],
             'tools'         => $registry->definitions(),
             'messages'      => $messages,
             'output_config' => ['effort' => $this->config['effort']],
-            // Cache automatico del prefijo (system + herramientas + conversacion).
+            // Cache automatico (5 min) del resto: la conversacion en curso.
             'cache_control' => ['type' => 'ephemeral'],
         ];
 
@@ -308,9 +315,14 @@ class AiAgent
         $model = $response->model ?? $this->config['model'];
         $price = $this->config['pricing'][$model] ?? $this->config['pricing'][$this->config['model']] ?? null;
 
+        // La escritura de 1 h cuesta 2x la entrada; la de 5 min, 1.25x.
+        $write1h = (int) ($u->cache_creation->ephemeral_1h_input_tokens ?? 0);
+        $write5m = max(0, $cacheWrite - $write1h);
+
         if ($price) {
             $usage['cost'] += ($input * $price['input'] + $output * $price['output']
-                + $cacheRead * $price['cache_read'] + $cacheWrite * $price['cache_write']) / 1000000;
+                + $cacheRead * $price['cache_read'] + $write5m * $price['cache_write']
+                + $write1h * ($price['cache_write_1h'] ?? $price['input'] * 2)) / 1000000;
         }
     }
 

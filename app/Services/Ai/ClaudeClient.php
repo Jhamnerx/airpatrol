@@ -258,7 +258,8 @@ class ClaudeClient
         }
 
         foreach ((array) $usage as $key => $value) {
-            if (is_numeric($value)) {
+            // Numeros y el desglose anidado cache_creation (ephemeral_5m/1h).
+            if (is_numeric($value) || ($key === 'cache_creation' && is_object($value))) {
                 $target->{$key} = $value;
             }
         }

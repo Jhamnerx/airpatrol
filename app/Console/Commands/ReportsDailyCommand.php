@@ -242,6 +242,7 @@ class ReportsDailyCommand extends Command {
             ]);
 
             $emailTemplate = EmailTemplate::getTemplate('report', $user);
+            $emailTemplate = $this->withAiSummary($emailTemplate, $user, $report, $generator);
 
             try {
                 $response = sendTemplateEmail($report->email, $emailTemplate, $data, [$filename]);
@@ -273,5 +274,33 @@ class ReportsDailyCommand extends Command {
 
             $this->processManager->unlock($data['id']);
         }
+    }
+
+    /**
+     * Agrega al cuerpo del correo un parrafo de conclusiones de AirBot si el
+     * usuario tiene el asistente. Copia la plantilla (no la guarda) y ante
+     * cualquier error deja el correo como estaba.
+     */
+    private function withAiSummary(EmailTemplate $template, User $user, $report, $generator): EmailTemplate
+    {
+        if (!\App\Services\Ai\AiFeatures::enabled($user, 'report_email')) {
+            return $template;
+        }
+
+        try {
+            $summary = \App\Services\Ai\AiFeatures::reportEmailSummary($user, (string) $report->title, $generator->toJson());
+        } catch (\Throwable $e) {
+            Bugsnag::notifyException($e);
+            return $template;
+        }
+
+        if (!$summary) {
+            return $template;
+        }
+
+        $copy = clone $template;
+        $copy->note = '<p><strong>Resumen AirBot:</strong><br>' . $summary . '</p><hr>' . $template->note;
+
+        return $copy;
     }
 }

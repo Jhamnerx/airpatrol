@@ -1382,6 +1382,11 @@ return [
     'dashboard' => [
         'enabled' => 0,
         'blocks'  => [
+            // Resumen de AirBot (solo con el permiso ai_assistant)
+            'ai_summary'           => [
+                'enabled' => 1,
+                'options' => [],
+            ],
             'device_activity'      => [
                 'enabled' => 1,
                 'options' => [],

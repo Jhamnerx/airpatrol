@@ -16,6 +16,17 @@
 
             <div class="collapse navbar-collapse" id="bs-header-navbar-collapse">
                 <ul class="nav navbar-nav navbar-right">
+                    @if (Auth::user()->perm('ai_assistant', 'view') && \App\Services\Ai\ClaudeClient::isConfigured())
+                        <li>
+                            <a href="javascript:" data-airbot-open role="button" rel="tooltip" data-placement="bottom" title="{{ trans('front.ai_assistant_title') }} (Ctrl+B)">
+                                <span class="icon" style="display:inline-flex;align-items:center;justify-content:center;">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="4"/><path d="M12 7V4"/><circle cx="9" cy="13" r="1.2" fill="currentColor"/><circle cx="15" cy="13" r="1.2" fill="currentColor"/></svg>
+                                </span>
+                                <span class="text">{{ trans('front.ai_assistant_title') }}</span>
+                            </a>
+                        </li>
+                    @endif
+
                     @if (isAdmin())
                         <li>
                             <a href="{!!route('admin')!!}" role="button" rel="tooltip" data-placement="bottom" title="{!!trans('global.admin')!!}">

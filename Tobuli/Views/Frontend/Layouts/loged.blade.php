@@ -243,6 +243,10 @@
     </div>
 
     @include('Frontend.Popups.index')
+
+    @if (Auth::user()->perm('ai_assistant', 'view') && \App\Services\Ai\ClaudeClient::isConfigured())
+        @include('Frontend.Ai.panel')
+    @endif
 </body>
 
 </html>

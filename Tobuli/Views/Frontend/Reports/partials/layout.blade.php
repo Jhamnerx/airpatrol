@@ -35,5 +35,11 @@
             @yield('content')
 
         </div>
+
+        {{-- Solo al ver el reporte en el navegador (no en descargas, correos ni archivos) --}}
+        @if ($report->getFormat() == 'html' && request()->routeIs('reports.update') && request('view')
+            && auth()->check() && \App\Services\Ai\AiFeatures::enabled(auth()->user(), 'explain_report'))
+            @include('Frontend.Ai.report_explain')
+        @endif
     </body>
 </html>
